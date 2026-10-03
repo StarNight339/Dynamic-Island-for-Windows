@@ -11,7 +11,7 @@
 | สถานะ Claude Code | Claude Code hooks → `POST /claude` |
 | ข้อความอะไรก็ได้ | `POST /notify` |
 
-เอาเมาส์ชี้ = ขยาย, คลิกขวา = เมนู (ตั้งเวลา / ออก), ไอคอนใน tray = เปิดพร้อม Windows / ออก
+เอาเมาส์ชี้ = ขยาย, คลิกขวา = Quick Panel (ตั้งเวลา, เปิด/ปิดแต่ละระบบ, ⚙ Settings, ออก), คลิกไอคอนใน tray = เปิดหน้าต่าง Settings
 island จะซ่อนตัวเองเมื่อมีแอปเต็มจอ (เกม, วิดีโอ)
 
 ## Run
@@ -62,6 +62,22 @@ requests.post("http://localhost:5179/notify", json={"title": "Agent", "body": "T
 | `SessionEnd` | ลบออก |
 
 แต่ละ session แสดงแยกกัน ถ้า island ไม่ได้เปิดอยู่ `curl` จะ fail เงียบๆ และไม่ block Claude
+
+## Settings
+
+ค่าทั้งหมดเก็บที่ `%AppData%\DynamicIsland\settings.json` (แยก key ตามระบบ) และมีผลทันทีโดยไม่ต้องรีสตาร์ท
+ยกเว้น port / เปิด-ปิด API ถ้าไฟล์เสีย แอปจะเริ่มด้วยค่า default และเก็บไฟล์เดิมไว้เป็น `settings.json.bak`
+
+### เพิ่มหน้า settings ให้ระบบใหม่
+
+1. เพิ่ม model ใน `Core/Settings/Sections.cs` (`static string SectionId` + property พร้อมค่า default)
+2. สร้าง `Settings/Sections/XxxSection.cs` สืบจาก `SettingsSection<XxxSettings>` แล้ว `yield return` รายการ
+   `Toggle(...)`, `Number(...)`, `NumberList(...)` หรือ `InfoItem` / `ActionItem` / `CustomItem`
+   (ใส่ `quick: true` ใน toggle เพื่อให้ขึ้นใน Quick Panel ด้วย)
+3. ลงทะเบียนใน `SettingsRegistry` ที่ `App.OnStartup`
+4. ใน provider อ่านค่าด้วย `settings.Get<XxxSettings>()` และฟัง `settings.Changed` ถ้าต้องตอบสนองทันที
+
+ไม่ต้องเขียน XAML เพิ่ม หน้าต่าง Settings และ Quick Panel สร้าง UI จากรายการเหล่านี้ให้เอง
 
 ## ข้อจำกัด
 

@@ -1,5 +1,6 @@
 using System.Windows.Threading;
 using DynamicIsland.Core;
+using DynamicIsland.Core.Settings;
 using DynamicIsland.Views;
 using Windows.System.Power;
 
@@ -14,14 +15,17 @@ public sealed class BatteryProvider
     private readonly Notifier _notifier;
     private readonly ClockView _clock;
     private readonly Dispatcher _dispatcher;
+    private readonly SettingsStore _settings;
     private readonly StatusView _view = new();
     private readonly Activity _activity;
 
     private bool _pluggedIn;
     private int _lastWarnedAt = 101;
 
-    public BatteryProvider(ActivityManager activities, Notifier notifier, ClockView clock, Dispatcher dispatcher)
+    public BatteryProvider(ActivityManager activities, Notifier notifier, ClockView clock, Dispatcher dispatcher,
+        SettingsStore settings)
     {
+        _settings = settings;
         _activities = activities;
         _notifier = notifier;
         _clock = clock;
@@ -49,10 +53,13 @@ public sealed class BatteryProvider
         if (plugged == _pluggedIn) return;
         _pluggedIn = plugged;
 
+        if (plugged) _lastWarnedAt = 101;
+        var settings = _settings.Get<BatterySettings>();
+        if (!settings.Enabled || !settings.ShowChargingFlash) return;
+
         var percent = PowerManager.RemainingChargePercent;
         if (plugged)
         {
-            _lastWarnedAt = 101;
             _view.Set(ClockView.BatteryGlyph(percent, true), "Charging", percent / 100.0, $"{percent}%",
                 Notifier.Brush("AccentGreen"));
         }
@@ -67,10 +74,11 @@ public sealed class BatteryProvider
     private void OnPercentChanged()
     {
         UpdateClock();
-        if (_pluggedIn) return;
+        var settings = _settings.Get<BatterySettings>();
+        if (_pluggedIn || !settings.Enabled) return;
 
         var percent = PowerManager.RemainingChargePercent;
-        foreach (var threshold in new[] { 5, 10, 20 })
+        foreach (var threshold in settings.LowThresholds.Order())
         {
             if (percent <= threshold && _lastWarnedAt > threshold)
             {

@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using DynamicIsland.Core;
+using DynamicIsland.Core.Settings;
 using DynamicIsland.Views;
 using Windows.Foundation;
 using Windows.Media.Control;
@@ -19,10 +20,10 @@ namespace DynamicIsland.Providers;
 public sealed class MediaProvider
 {
     private const string Id = "media";
-    private static readonly TimeSpan PausedLinger = TimeSpan.FromSeconds(90);
 
     private readonly ActivityManager _activities;
     private readonly Dispatcher _dispatcher;
+    private readonly SettingsStore _settings;
     private readonly MediaView _view = new();
     private readonly Activity _activity;
 
@@ -36,10 +37,11 @@ public sealed class MediaProvider
     private readonly TypedEventHandler<GsmtcSession, PlaybackInfoChangedEventArgs> _onPlayback;
     private readonly TypedEventHandler<GsmtcSession, TimelinePropertiesChangedEventArgs> _onTimeline;
 
-    public MediaProvider(ActivityManager activities, Dispatcher dispatcher)
+    public MediaProvider(ActivityManager activities, Dispatcher dispatcher, SettingsStore settings)
     {
         _activities = activities;
         _dispatcher = dispatcher;
+        _settings = settings;
         _activity = new Activity { Id = Id, View = _view, Priority = Priority.Media };
 
         _onProps = (_, _) => QueueRefresh();
@@ -49,6 +51,19 @@ public sealed class MediaProvider
         _view.PlayPauseRequested += () => Try(s => s.TryTogglePlayPauseAsync());
         _view.NextRequested += () => Try(s => s.TrySkipNextAsync());
         _view.PreviousRequested += () => Try(s => s.TrySkipPreviousAsync());
+
+        settings.Changed += id =>
+        {
+            if (id != MediaSettings.SectionId) return;
+            if (settings.Get<MediaSettings>().Enabled) _ = RefreshAsync();
+            else Hide();
+        };
+    }
+
+    private void Hide()
+    {
+        _lastPlaying = false;
+        _activities.Remove(Id);
     }
 
     public async Task StartAsync()
@@ -70,8 +85,7 @@ public sealed class MediaProvider
         _session = _manager?.GetCurrentSession();
         if (_session is null)
         {
-            _lastPlaying = false;
-            _activities.Remove(Id);
+            Hide();
             return;
         }
 
@@ -86,7 +100,7 @@ public sealed class MediaProvider
     private async Task RefreshAsync()
     {
         var session = _session;
-        if (session is null) return;
+        if (session is null || !_settings.Get<MediaSettings>().Enabled) return;
 
         try
         {
@@ -102,6 +116,7 @@ public sealed class MediaProvider
                 _art = await LoadArtAsync(props.Thumbnail);
             }
             if (!ReferenceEquals(session, _session)) return; // session changed while awaiting
+            if (!_settings.Get<MediaSettings>().Enabled) return; // switched off while awaiting
 
             _view.Update(props.Title, props.Artist, _art, playing);
             if (timeline is not null)
@@ -119,7 +134,7 @@ public sealed class MediaProvider
             else if (!playing && shown && _lastPlaying)
             {
                 _activity.Priority = Priority.MediaPaused;
-                _activities.Post(_activity, PausedLinger);
+                _activities.Post(_activity, TimeSpan.FromSeconds(_settings.Get<MediaSettings>().PausedLingerSeconds));
             }
             _lastPlaying = playing;
         }

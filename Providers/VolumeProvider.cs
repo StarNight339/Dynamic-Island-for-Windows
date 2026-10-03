@@ -1,5 +1,6 @@
 using System.Windows.Threading;
 using DynamicIsland.Core;
+using DynamicIsland.Core.Settings;
 using DynamicIsland.Views;
 using NAudio.CoreAudioApi;
 
@@ -12,6 +13,7 @@ public sealed class VolumeProvider : IDisposable
 
     private readonly ActivityManager _activities;
     private readonly Dispatcher _dispatcher;
+    private readonly SettingsStore _settings;
     private readonly StatusView _view = new();
     private readonly Activity _activity;
     private readonly MMDeviceEnumerator _enumerator = new();
@@ -20,8 +22,9 @@ public sealed class VolumeProvider : IDisposable
     private MMDevice? _device;
     private DateTime _attachedAt;
 
-    public VolumeProvider(ActivityManager activities, Dispatcher dispatcher)
+    public VolumeProvider(ActivityManager activities, Dispatcher dispatcher, SettingsStore settings)
     {
+        _settings = settings;
         _activities = activities;
         _dispatcher = dispatcher;
         _activity = new Activity { Id = Id, View = _view, Priority = Priority.Volume };
@@ -65,6 +68,7 @@ public sealed class VolumeProvider : IDisposable
 
     private void Show(float level, bool muted)
     {
+        if (!_settings.Get<VolumeSettings>().Enabled) return;
         var percent = (int)Math.Round(level * 100);
         var glyph = muted || percent == 0 ? "\uE74F"
             : percent < 34 ? "\uE993"

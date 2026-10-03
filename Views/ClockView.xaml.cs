@@ -52,9 +52,14 @@ public partial class ClockView : IslandView
         DateText.Text = now.ToString("dddd d MMMM", CultureInfo.CurrentCulture);
     }
 
-    private void Timer_Click(object sender, RoutedEventArgs e)
+    public void SetTimerPresets(IEnumerable<int> minutes)
     {
-        if (sender is Button { Tag: string tag } && int.TryParse(tag, out var minutes))
-            TimerRequested?.Invoke(minutes);
+        TimerChips.Children.Clear();
+        foreach (var m in minutes.Take(5))
+        {
+            var chip = new Button { Style = (Style)FindResource("ChipButton"), Content = FormatMinutes(m) };
+            chip.Click += (_, _) => TimerRequested?.Invoke(m);
+            TimerChips.Children.Add(chip);
+        }
     }
 }
