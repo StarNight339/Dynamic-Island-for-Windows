@@ -14,12 +14,23 @@
 เอาเมาส์ชี้ = ขยาย, คลิกขวา = Quick Panel (ตั้งเวลา, เปิด/ปิดแต่ละระบบ, ⚙ Settings, ออก), คลิกไอคอนใน tray = เปิดหน้าต่าง Settings
 island จะซ่อนตัวเองเมื่อมีแอปเต็มจอ (เกม, วิดีโอ)
 
+## Download
+
+โหลดได้จากหน้า [Releases](https://github.com/StarNight339/Dynamic-Island-for-Windows/releases) มี 2 แบบ
+
+| ไฟล์ | ขนาด | |
+|---|---|---|
+| `DynamicIsland-<version>-win-x64.exe` | ~30 MB | ต้องติดตั้ง [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) ก่อน |
+| `DynamicIsland-<version>-win-x64-standalone.exe` | ~80 MB | รวม runtime มาแล้ว ดับเบิลคลิกได้เลย |
+
+ไฟล์ถูก build อัตโนมัติโดย GitHub Actions ทุกครั้งที่ publish release ใหม่
+
 ## Run
 
 ```powershell
 dotnet run
-# หรือ build แบบไฟล์เดียว
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+# หรือ build แบบไฟล์เดียว (ใช้ --no-self-contained; บน .NET 10 "--self-contained false" จะกลายเป็น true)
+dotnet publish -c Release -r win-x64 --no-self-contained -p:PublishSingleFile=true
 ```
 
 ## Local API (`http://localhost:5179/`)
