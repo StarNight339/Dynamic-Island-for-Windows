@@ -50,6 +50,35 @@ internal static partial class NativeMethods
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
 
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMSBT_MAINWINDOW = 2; // Mica
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS { public int Left, Right, Top, Bottom; }
+
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
+    /// <summary>
+    /// Dark title bar plus Mica behind the whole client area (Windows 11 22H2+). Returns false when Mica
+    /// isn't available, in which case the caller should paint its own background.
+    /// </summary>
+    public static bool ApplyDarkMica(IntPtr hwnd)
+    {
+        var dark = 1;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+        if (Environment.OSVersion.Version.Build < 22621) return false;
+
+        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        var backdrop = DWMSBT_MAINWINDOW;
+        return DwmExtendFrameIntoClientArea(hwnd, ref margins) == 0 &&
+               DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) == 0;
+    }
+
     /// <summary>Tool window (no taskbar / alt-tab entry) that never takes keyboard focus.</summary>
     public static void MakeOverlay(IntPtr hwnd)
     {

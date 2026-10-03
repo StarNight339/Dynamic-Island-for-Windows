@@ -1,9 +1,13 @@
 using System.Net;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using DynamicIsland.Core;
+using DynamicIsland.Core.Settings;
 using DynamicIsland.Providers;
+using DynamicIsland.Settings.Sections;
 using DynamicIsland.Views;
-using Microsoft.Win32;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
@@ -11,14 +15,16 @@ namespace DynamicIsland;
 
 public partial class App : Application
 {
-    private const int ApiPort = 5179;
-    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValueName = "DynamicIsland";
+    private const string QuickPanelId = "quick";
 
     private Mutex? _singleInstance;
     private Forms.NotifyIcon? _tray;
+    private Drawing.Icon? _icon;
     private VolumeProvider? _volume;
     private HttpApiProvider? _api;
+    private SettingsStore? _settings;
+    private SettingsRegistry? _registry;
+    private SettingsWindow? _settingsWindow;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -31,27 +37,36 @@ public partial class App : Application
             return;
         }
 
+        var settings = _settings = new SettingsStore(SettingsStore.DefaultPath);
         var activities = new ActivityManager();
         var notifier = new Notifier(activities);
         var clock = new ClockView();
-        var window = new IslandWindow(activities, clock);
+        var window = new IslandWindow(activities, clock, settings);
 
-        var timer = new ClockTimerProvider(activities, notifier, clock);
-        var claude = new ClaudeProvider(activities, notifier);
-        window.TimerMenuRequested += minutes =>
-        {
-            if (minutes <= 0) timer.Cancel();
-            else timer.Start(TimeSpan.FromMinutes(minutes));
-        };
-        window.ExitRequested += Quit;
+        var timer = new ClockTimerProvider(activities, notifier, clock, settings);
+        var claude = new ClaudeProvider(activities, notifier, settings);
+
+        // Sidebar order. A new system adds its section here (see README "Adding a settings page").
+        _registry = new SettingsRegistry([
+            new GeneralSection(settings),
+            new TimerSection(settings),
+            new BatterySection(settings),
+            new MediaSection(settings),
+            new VolumeSection(settings),
+            new ClaudeSection(settings),
+            new ApiSection(settings, notifier),
+            new AboutSection(settings),
+        ]);
+
+        SetUpQuickPanel(window, activities, timer);
         window.Show();
 
-        CreateTray(timer);
+        CreateTray();
 
-        new BatteryProvider(activities, notifier, clock, Dispatcher).Start();
+        new BatteryProvider(activities, notifier, clock, Dispatcher, settings).Start();
         try
         {
-            _volume = new VolumeProvider(activities, Dispatcher);
+            _volume = new VolumeProvider(activities, Dispatcher, settings);
             _volume.Start();
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException)
@@ -59,20 +74,24 @@ public partial class App : Application
             _volume = null; // no audio endpoint (e.g. RDP without audio); the island just won't show volume
         }
 
-        try
+        var api = settings.Get<ApiSettings>();
+        if (api.Enabled)
         {
-            _api = new HttpApiProvider(ApiPort, Dispatcher, notifier, claude, timer);
-            _api.Start();
-        }
-        catch (HttpListenerException ex)
-        {
-            _api = null;
-            notifier.Show("API unavailable", $"Port {ApiPort}: {ex.Message}", "\uE7BA", Notifier.Brush("AccentRed"), 8);
+            try
+            {
+                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer);
+                _api.Start();
+            }
+            catch (HttpListenerException ex)
+            {
+                _api = null;
+                notifier.Show("API unavailable", $"Port {api.Port}: {ex.Message}", "\uE7BA", Notifier.Brush("AccentRed"), 8);
+            }
         }
 
         try
         {
-            await new MediaProvider(activities, Dispatcher).StartAsync();
+            await new MediaProvider(activities, Dispatcher, settings).StartAsync();
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
         {
@@ -80,25 +99,73 @@ public partial class App : Application
         }
     }
 
-    private void CreateTray(ClockTimerProvider timer)
+    /// <summary>Right-click turns the island into a panel of quick timers and toggles; leaving it closes it.</summary>
+    private void SetUpQuickPanel(IslandWindow window, ActivityManager activities, ClockTimerProvider timer)
     {
+        var view = new QuickPanelView();
+        var activity = new Activity { Id = QuickPanelId, View = view, Priority = Priority.QuickPanel, AutoExpand = true };
+        void Close() => activities.Remove(QuickPanelId);
+
+        window.QuickPanelRequested += () =>
+        {
+            if (activities.Contains(QuickPanelId))
+            {
+                Close();
+                return;
+            }
+            view.Populate(_settings!.Get<TimerSettings>().Presets, timer.IsRunning, _registry!.BuildQuickToggles().ToList());
+            activities.Post(activity);
+        };
+        window.HoverEnded += Close;
+
+        view.TimerRequested += minutes =>
+        {
+            Close();
+            timer.Start(TimeSpan.FromMinutes(minutes));
+        };
+        view.CancelTimerRequested += () =>
+        {
+            Close();
+            timer.Cancel();
+        };
+        view.SettingsRequested += () =>
+        {
+            Close();
+            ShowSettings();
+        };
+        view.ExitRequested += Quit;
+    }
+
+    private void ShowSettings()
+    {
+        if (_settingsWindow is null)
+        {
+            _settingsWindow = new SettingsWindow(_registry!, _settings!) { Icon = ToImageSource(_icon!) };
+            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Show();
+        }
+        if (_settingsWindow.WindowState == WindowState.Minimized) _settingsWindow.WindowState = WindowState.Normal;
+        _settingsWindow.Activate();
+    }
+
+    private void CreateTray()
+    {
+        _icon = CreateTrayIcon();
         var menu = new Forms.ContextMenuStrip();
-        var startup = new Forms.ToolStripMenuItem("Start with Windows") { Checked = IsStartupEnabled(), CheckOnClick = true };
-        startup.CheckedChanged += (_, _) => SetStartup(startup.Checked);
-        menu.Items.Add($"API: http://localhost:{ApiPort}/").Enabled = false;
+        menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Timer 5 min", null, (_, _) => timer.Start(TimeSpan.FromMinutes(5)));
-        menu.Items.Add("Cancel timer", null, (_, _) => timer.Cancel());
-        menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(startup);
         menu.Items.Add("Exit", null, (_, _) => Quit());
 
         _tray = new Forms.NotifyIcon
         {
-            Icon = CreateTrayIcon(),
+            Icon = _icon,
             Text = "Dynamic Island",
             ContextMenuStrip = menu,
             Visible = true,
+        };
+        _tray.MouseClick += (_, e) =>
+        {
+            if (e.Button == Forms.MouseButtons.Left) ShowSettings();
         };
     }
 
@@ -121,22 +188,12 @@ public partial class App : Application
         return Drawing.Icon.FromHandle(bmp.GetHicon());
     }
 
-    private static bool IsStartupEnabled()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath);
-        return key?.GetValue(RunValueName) is string;
-    }
-
-    private static void SetStartup(bool enabled)
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
-        if (key is null) return;
-        if (enabled) key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\"");
-        else key.DeleteValue(RunValueName, throwOnMissingValue: false);
-    }
+    private static ImageSource ToImageSource(Drawing.Icon icon) =>
+        Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
 
     private void Quit()
     {
+        _settings?.Flush();
         if (_tray is not null) _tray.Visible = false;
         _tray?.Dispose();
         _api?.Dispose();
@@ -146,6 +203,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _settings?.Flush();
         if (_tray is not null) _tray.Visible = false;
         _singleInstance?.Dispose();
         base.OnExit(e);

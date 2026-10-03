@@ -1,10 +1,10 @@
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using DynamicIsland.Core;
+using DynamicIsland.Core.Settings;
 using DynamicIsland.Views;
 using Microsoft.Win32;
 
@@ -15,6 +15,7 @@ public partial class IslandWindow : Window
     private const double ExpandedRadius = 36;
 
     private readonly ActivityManager _activities;
+    private readonly SettingsStore _settings;
     private readonly ClockView _idleView;
     private readonly SpringAnimator _spring;
     private readonly DispatcherTimer _hoverDelay = new() { Interval = TimeSpan.FromMilliseconds(120) };
@@ -26,15 +27,19 @@ public partial class IslandWindow : Window
     private bool _hiddenForFullscreen;
     private IntPtr _hwnd;
 
-    public event Action<int>? TimerMenuRequested;
-    public event Action? ExitRequested;
+    /// <summary>Right-click on the island.</summary>
+    public event Action? QuickPanelRequested;
+
+    /// <summary>The pointer left the island (after the leave delay).</summary>
+    public event Action? HoverEnded;
 
     public IslandState State { get; private set; } = IslandState.Idle;
 
-    public IslandWindow(ActivityManager activities, ClockView idleView)
+    public IslandWindow(ActivityManager activities, ClockView idleView, SettingsStore settings)
     {
         InitializeComponent();
         _activities = activities;
+        _settings = settings;
         _idleView = idleView;
 
         var initial = idleView.CompactSize;
@@ -42,7 +47,7 @@ public partial class IslandWindow : Window
 
         _activities.CurrentChanged += Render;
         _hoverDelay.Tick += (_, _) => { _hoverDelay.Stop(); _hover = true; Render(); };
-        _leaveDelay.Tick += (_, _) => { _leaveDelay.Stop(); _hover = false; Render(); };
+        _leaveDelay.Tick += (_, _) => { _leaveDelay.Stop(); _hover = false; HoverEnded?.Invoke(); Render(); };
         _housekeeping.Tick += (_, _) => Housekeeping();
 
         SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.InvokeAsync(PositionWindow);
@@ -124,7 +129,7 @@ public partial class IslandWindow : Window
     {
         if (_hwnd == IntPtr.Zero) return;
 
-        var fullscreen = NativeMethods.IsForegroundFullscreen(_hwnd);
+        var fullscreen = _settings.Get<GeneralSettings>().HideInFullscreen && NativeMethods.IsForegroundFullscreen(_hwnd);
         if (fullscreen != _hiddenForFullscreen)
         {
             _hiddenForFullscreen = fullscreen;
@@ -146,11 +151,12 @@ public partial class IslandWindow : Window
         if (_hover) _leaveDelay.Start();
     }
 
-    private void TimerMenu_Click(object sender, RoutedEventArgs e)
+    private void Island_MouseRightButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is MenuItem { Tag: string tag } && int.TryParse(tag, out var minutes))
-            TimerMenuRequested?.Invoke(minutes);
+        e.Handled = true;
+        // Count as hovering right away so leaving the island reliably raises HoverEnded.
+        _hoverDelay.Stop();
+        _hover = true;
+        QuickPanelRequested?.Invoke();
     }
-
-    private void Exit_Click(object sender, RoutedEventArgs e) => ExitRequested?.Invoke();
 }

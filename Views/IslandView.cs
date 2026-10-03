@@ -32,4 +32,8 @@ public abstract class IslandView : UserControl
 
     protected static string FormatTime(TimeSpan t) =>
         t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"m\:ss");
+
+    /// <summary>Label for a timer preset: "25 min", "1 h", "1 h 30".</summary>
+    public static string FormatMinutes(int minutes) =>
+        minutes < 60 ? $"{minutes} min" : minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes / 60} h {minutes % 60}";
 }

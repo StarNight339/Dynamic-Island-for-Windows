@@ -10,19 +10,8 @@
     <!-- Fully transparent pixels of a layered window are click-through, so only the black island catches the mouse. -->
     <Grid x:Name="Root">
         <Grid x:Name="Island" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
-              MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave">
-            <Grid.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Timer 1 min" Tag="1" Click="TimerMenu_Click" />
-                    <MenuItem Header="Timer 5 min" Tag="5" Click="TimerMenu_Click" />
-                    <MenuItem Header="Timer 10 min" Tag="10" Click="TimerMenu_Click" />
-                    <MenuItem Header="Timer 25 min" Tag="25" Click="TimerMenu_Click" />
-                    <MenuItem Header="Cancel timer" Tag="0" Click="TimerMenu_Click" />
-                    <Separator />
-                    <MenuItem Header="Exit" Click="Exit_Click" />
-                </ContextMenu>
-            </Grid.ContextMenu>
-
+              MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
+              MouseRightButtonUp="Island_MouseRightButtonUp">
             <!-- The black capsule: its size and corner radius are driven by springs. -->
             <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top" />
 

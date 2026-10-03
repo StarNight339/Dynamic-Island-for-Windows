@@ -19,6 +19,7 @@ public static class Priority
     public const int Battery = 80;
     public const int Volume = 90;
     public const int Notification = 100;
+    public const int QuickPanel = 110;
 }
 
 /// <summary>Something the island can show. Providers keep a reference and update <see cref="View"/> in place.</summary>
