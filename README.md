@@ -42,7 +42,7 @@ curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"tit
 # อีโมจิสี (ใช้ได้ทั้งใน icon, title, body)
 curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"เสร็จแล้ว 🎉\",\"icon\":\"🤖\",\"color\":\"#3A3A3C\"}'
 
-# รูปภาพแทน icon: URL, path ในเครื่อง หรือ data:image/png;base64,... (ไม่เกิน 5 MB, PNG/JPG/GIF/BMP/ICO)
+# รูปภาพแทน icon: URL, path ในเครื่อง หรือ data:image/png;base64,... (ไม่เกิน 5 MB, PNG/JPG/GIF/BMP/ICO; GIF หลายเฟรมจะเล่นวนเป็นภาพเคลื่อนไหว)
 curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"GitHub\",\"body\":\"New PR\",\"image\":\"https://github.com/fluidicon.png\"}'
 
 # ตัวจับเวลา (0 = ยกเลิก)
