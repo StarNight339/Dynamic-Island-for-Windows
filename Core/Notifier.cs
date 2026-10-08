@@ -7,7 +7,7 @@ namespace DynamicIsland.Core;
 /// <summary>Shows a transient, auto-expanding notification. A newer one replaces the older.</summary>
 public sealed class Notifier(ActivityManager activities)
 {
-    public void Show(string title, string? body, string icon, Brush accent, double seconds = 5, ImageSource? image = null)
+    public void Show(string title, string? body, string icon, Brush accent, double seconds = 5, NotifyImage? image = null)
     {
         var view = new NotifyView(title, body, icon, accent, image);
         activities.Post(new Activity
