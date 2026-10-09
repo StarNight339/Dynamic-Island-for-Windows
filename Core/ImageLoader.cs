@@ -20,7 +20,15 @@ public static class ImageLoader
     private const long MaxBytes = 5 * 1024 * 1024;
     private const int DecodeSize = 128; // badge is 44 DIPs; enough for 200% scaling
     private const int MaxFrames = 300;
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly HttpClient Http = CreateHttp();
+
+    private static HttpClient CreateHttp()
+    {
+        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        // Some hosts (e.g. Wikimedia) reject requests without a User-Agent with 403.
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("DynamicIsland/1.0");
+        return http;
+    }
 
     public static async Task<NotifyImage?> LoadAsync(string? source)
     {
