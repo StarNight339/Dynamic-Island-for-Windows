@@ -14,13 +14,16 @@ namespace DynamicIsland.Providers;
 ///                  icon  = Fluent glyph ("\uE73E") or emoji ("🎉"); image = http(s) URL, file path or data: URI
 ///   POST /claude   Claude Code hook JSON as-is, or {"event": "working|waiting|done|idle", "message"?, "project"?}
 ///   POST /timer    {"seconds"}  (0 cancels)
+///   POST /progress {"id"?, "progress" (0-100), "title"?, "body"?, "icon"?, "image"?, "color"?, "dismiss"?}
+///                  same id updates the bar in place; omitted fields keep their value; 100 finishes it
 /// </summary>
 public sealed class HttpApiProvider(
     int port,
     Dispatcher dispatcher,
     Notifier notifier,
     ClaudeProvider claude,
-    ClockTimerProvider timer) : IDisposable
+    ClockTimerProvider timer,
+    ProgressProvider progress) : IDisposable
 {
     private readonly HttpListener _listener = new();
     private readonly CancellationTokenSource _cts = new();
@@ -74,6 +77,7 @@ public sealed class HttpApiProvider(
                 "/notify" => await NotifyActionAsync(json),
                 "/claude" => ClaudeAction(json),
                 "/timer" => TimerAction(json),
+                "/progress" => await ProgressActionAsync(json),
                 _ => null,
             };
             if (action is null)
@@ -127,6 +131,23 @@ public sealed class HttpApiProvider(
             else timer.Start(TimeSpan.FromSeconds(seconds));
         };
     }
+
+    private async Task<Action> ProgressActionAsync(JsonElement json)
+    {
+        var id = Str(json, "id") ?? "default";
+        if (Bool(json, "dismiss")) return () => progress.Dismiss(id);
+
+        var title = Str(json, "title");
+        var body = Str(json, "body") ?? Str(json, "message");
+        var icon = Str(json, "icon");
+        var color = Str(json, "color");
+        var percent = Num(json, "progress");
+        var image = await ImageLoader.LoadAsync(Str(json, "image"));
+        return () => progress.Update(id, title, body, icon, color, image, percent);
+    }
+
+    private static bool Bool(JsonElement json, string name) =>
+        json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;
 
     private static string? Str(JsonElement json, string name) =>
         json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String

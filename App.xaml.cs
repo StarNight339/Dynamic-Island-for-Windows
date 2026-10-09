@@ -87,7 +87,7 @@ public partial class App : Application
         {
             try
             {
-                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer);
+                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer, new ProgressProvider(activities));
                 _api.Start();
             }
             catch (HttpListenerException ex)
