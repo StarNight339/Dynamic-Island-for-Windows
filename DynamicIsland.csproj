@@ -12,6 +12,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- DPI awareness comes from app.manifest (WPF needs it there); WinForms is only the tray icon. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <!-- Release builds override this from the tag (v1.2.3 -> 1.2.3); the updater compares it to GitHub's latest release. -->
+    <Version>0.2.0</Version>
+    <!-- Lets the updater download the same flavour (runtime included or not) as the running exe. -->
+    <DefineConstants Condition="'$(SelfContained)' == 'true'">$(DefineConstants);STANDALONE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

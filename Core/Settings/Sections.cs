@@ -48,3 +48,9 @@ public sealed class ApiSettings : ISettingsModel
     public bool Enabled { get; set; } = true;
     public int Port { get; set; } = 5179;
 }
+
+public sealed class UpdateSettings : ISettingsModel
+{
+    public static string SectionId => "update";
+    public bool AutoUpdate { get; set; } = true;
+}
