@@ -16,6 +16,7 @@ public static class Priority
     public const int Media = 40;
     public const int Timer = 50;
     public const int ClaudeWorking = 60;
+    public const int Progress = 70;
     public const int Battery = 80;
     public const int Volume = 90;
     public const int Notification = 100;

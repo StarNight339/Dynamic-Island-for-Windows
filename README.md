@@ -54,6 +54,11 @@ curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"tit
 # รูปภาพแทน icon: URL, path ในเครื่อง หรือ data:image/png;base64,... (ไม่เกิน 5 MB, PNG/JPG/GIF/BMP/ICO; GIF หลายเฟรมจะเล่นวนเป็นภาพเคลื่อนไหว)
 curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"GitHub\",\"body\":\"New PR\",\"image\":\"https://github.com/fluidicon.png\"}'
 
+# แถบความคืบหน้า: progress = 0-100, ส่ง id เดิมซ้ำเพื่ออัปเดต (ฟิลด์ที่ไม่ส่งจะคงค่าเดิม)
+# ถึง 100 จะเป็นสีเขียวแล้วหายไปใน ~3 วินาที, ถ้าไม่มีอัปเดตเกิน 10 นาทีจะหายเอง
+curl.exe -s localhost:5179/progress -H "Content-Type: application/json" -d '{\"id\":\"dl\",\"title\":\"Downloading\",\"body\":\"model.bin\",\"progress\":42}'
+curl.exe -s localhost:5179/progress -H "Content-Type: application/json" -d '{\"id\":\"dl\",\"dismiss\":true}'
+
 # ตัวจับเวลา (0 = ยกเลิก)
 curl.exe -s localhost:5179/timer -H "Content-Type: application/json" -d '{\"seconds\":300}'
 
@@ -66,6 +71,11 @@ curl.exe -s localhost:5179/claude -H "Content-Type: application/json" -d '{\"eve
 ```python
 import requests
 requests.post("http://localhost:5179/notify", json={"title": "Agent", "body": "Task finished"})
+
+for i, item in enumerate(items, 1):
+    process(item)
+    requests.post("http://localhost:5179/progress",
+                  json={"id": "batch", "title": "Processing", "body": f"{i}/{len(items)}", "progress": i * 100 / len(items)})
 ```
 
 ## Claude Code integration

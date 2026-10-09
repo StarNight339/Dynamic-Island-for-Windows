@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using DynamicIsland.Core;
 
 namespace DynamicIsland.Views;
@@ -24,46 +23,7 @@ public partial class NotifyView : IslandView
         BodyText.Text = body ?? "";
         BodyText.Visibility = _hasBody ? Visibility.Visible : Visibility.Collapsed;
 
-        if (image is not null)
-        {
-            // App-icon style: rounded square filled by the image, no accent circle behind it.
-            IconText.Visibility = CompactIcon.Visibility = Visibility.Collapsed;
-            Badge.CornerRadius = new CornerRadius(12);
-            CompactBadge.CornerRadius = new CornerRadius(6);
-            var brush = new ImageBrush(image.Still) { Stretch = Stretch.UniformToFill };
-            if (image.IsAnimated) brush.BeginAnimation(ImageBrush.ImageSourceProperty, FrameAnimation(image));
-            Badge.Background = CompactBadge.Background = brush;
-            return;
-        }
-
-        Badge.Background = CompactBadge.Background = accent;
-        if (IsFluentGlyph(icon))
-        {
-            IconText.Text = CompactIcon.Text = icon;
-            return;
-        }
-
-        // Emoji / plain text: drawn in colour by Emoji.Wpf.
-        IconText.Visibility = CompactIcon.Visibility = Visibility.Collapsed;
-        EmojiIcon.Text = CompactEmoji.Text = icon;
-        EmojiIcon.Visibility = CompactEmoji.Visibility = Visibility.Visible;
+        BadgeFill.Apply(Badge, IconText, EmojiIcon, icon, accent, image, 12);
+        BadgeFill.Apply(CompactBadge, CompactIcon, CompactEmoji, icon, accent, image, 6);
     }
-
-    /// <summary>Steps the brush through the GIF frames with their own delays, looping forever.</summary>
-    private static ObjectAnimationUsingKeyFrames FrameAnimation(NotifyImage image)
-    {
-        var anim = new ObjectAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
-        var at = TimeSpan.Zero;
-        for (var i = 0; i < image.Frames!.Length; i++)
-        {
-            anim.KeyFrames.Add(new DiscreteObjectKeyFrame(image.Frames[i], KeyTime.FromTimeSpan(at)));
-            at += image.Delays![i];
-        }
-        anim.Duration = at;
-        anim.Freeze(); // frozen timelines aren't cloned when the clock starts
-        return anim;
-    }
-
-    /// <summary>Fluent/MDL2 icons live in the Unicode private-use area.</summary>
-    private static bool IsFluentGlyph(string s) => s.Length == 1 && s[0] is >= '' and <= '';
 }
