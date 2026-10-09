@@ -30,16 +30,19 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        Updater.WaitForPrevious(e.Args);
         _singleInstance = new Mutex(true, @"Local\DynamicIsland.SingleInstance", out var isFirst);
         if (!isFirst)
         {
             Shutdown();
             return;
         }
+        Updater.CleanUp();
 
         var settings = _settings = new SettingsStore(SettingsStore.DefaultPath);
         var activities = new ActivityManager();
         var notifier = new Notifier(activities);
+        var updater = new Updater(notifier, settings, Quit);
         var clock = new ClockView();
         var window = new IslandWindow(activities, clock, settings);
 
@@ -55,13 +58,18 @@ public partial class App : Application
             new VolumeSection(settings),
             new ClaudeSection(settings),
             new ApiSection(settings, notifier),
-            new AboutSection(settings),
+            new AboutSection(settings, updater),
         ]);
 
         SetUpQuickPanel(window, activities, timer);
         window.Show();
 
         CreateTray();
+
+        if (e.Args.Contains(Updater.UpdatedArg))
+            notifier.Show($"Updated to {Updater.Current.ToString(3)}", "Dynamic Island is up to date", "",
+                Notifier.Brush("AccentGreen"));
+        updater.Start();
 
         new BatteryProvider(activities, notifier, clock, Dispatcher, settings).Start();
         try
