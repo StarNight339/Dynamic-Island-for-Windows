@@ -78,6 +78,12 @@ for i, item in enumerate(items, 1):
                   json={"id": "batch", "title": "Processing", "body": f"{i}/{len(items)}", "progress": i * 100 / len(items)})
 ```
 
+ทดสอบ API ทั้งหมด (ต้องเปิดแอปไว้ก่อน ใช้แค่ Python standard library):
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
 ## Claude Code integration
 
 คัดลอกบล็อก `hooks` จาก [`hooks/claude-settings.json`](hooks/claude-settings.json) ไปใส่ใน `~/.claude/settings.json`
