@@ -25,6 +25,9 @@ public sealed class HttpApiProvider(
     ClockTimerProvider timer,
     ProgressProvider progress) : IDisposable
 {
+    /// <summary>Room for a 5 MB image sent as a base64 data: URI (~6.7 MB) plus the rest of the JSON.</summary>
+    private const int MaxBodyBytes = 8 * 1024 * 1024;
+
     private readonly HttpListener _listener = new();
     private readonly CancellationTokenSource _cts = new();
 
@@ -56,6 +59,14 @@ public sealed class HttpApiProvider(
         var path = req.Url?.AbsolutePath.TrimEnd('/').ToLowerInvariant() ?? "";
         try
         {
+            // Browsers attach Origin to every cross-site POST (even mode:"no-cors", which skips the CORS preflight),
+            // so this stops any web page from pushing fake notifications or making the app fetch URLs / read files.
+            // curl, Python, Claude Code hooks and other local tools never send it.
+            if (req.Headers["Origin"] is not null)
+            {
+                await Reply(ctx, 403, """{"error":"browser requests are not allowed"}""");
+                return;
+            }
             if (req.HttpMethod == "GET" && path == "")
             {
                 await Reply(ctx, 200, """{"ok":true,"app":"DynamicIsland"}""");
@@ -67,8 +78,12 @@ public sealed class HttpApiProvider(
                 return;
             }
 
-            using var reader = new StreamReader(req.InputStream, Encoding.UTF8);
-            var text = await reader.ReadToEndAsync();
+            var text = await ReadBodyAsync(req);
+            if (text is null)
+            {
+                await Reply(ctx, 413, """{"error":"request too large"}""");
+                return;
+            }
             using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(text) ? "{}" : text);
             var json = doc.RootElement;
 
@@ -144,6 +159,23 @@ public sealed class HttpApiProvider(
         var percent = Num(json, "progress");
         var image = await ImageLoader.LoadAsync(Str(json, "image"));
         return () => progress.Update(id, title, body, icon, color, image, percent);
+    }
+
+    /// <summary>Reads the body as UTF-8, or returns null when it exceeds <see cref="MaxBodyBytes"/>.</summary>
+    private static async Task<string?> ReadBodyAsync(HttpListenerRequest req)
+    {
+        if (req.ContentLength64 > MaxBodyBytes) return null;
+
+        // Content-Length can be absent (chunked), so cap what is actually read too.
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await req.InputStream.ReadAsync(chunk)) > 0)
+        {
+            if (buffer.Length + read > MaxBodyBytes) return null;
+            buffer.Write(chunk, 0, read);
+        }
+        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
     private static bool Bool(JsonElement json, string name) =>

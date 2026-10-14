@@ -17,11 +17,11 @@ import urllib.request
 BASE = os.environ.get("DYNAMIC_ISLAND_URL", "http://localhost:5179").rstrip("/")
 
 
-def request(method, path, body=None, raw=None):
+def request(method, path, body=None, raw=None, headers=None):
     """Returns (status, parsed JSON). `raw` sends the string as-is (for malformed bodies)."""
     data = raw.encode() if raw is not None else json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method,
-                                 headers={"Content-Type": "application/json; charset=utf-8"})
+                                 headers={"Content-Type": "application/json; charset=utf-8", **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return r.status, json.loads(r.read() or b"null")
@@ -120,6 +120,25 @@ class ErrorTests(unittest.TestCase):
 
     def test_wrong_method(self):
         self.assertEqual(request("GET", "/progress"), (405, {"error": "use POST"}))
+
+
+class SecurityTests(unittest.TestCase):
+    def test_browser_origin_is_rejected(self):
+        # What a web page's fetch(..., {mode: "no-cors"}) looks like: text/plain body plus an Origin header.
+        status, _ = request("POST", "/notify", {"title": "from a web page"},
+                            headers={"Origin": "https://evil.example", "Content-Type": "text/plain"})
+        self.assertEqual(status, 403)
+
+    def test_origin_rejected_on_health_check(self):
+        self.assertEqual(request("GET", "/", headers={"Origin": "https://evil.example"})[0], 403)
+
+    def test_oversized_body(self):
+        # The server answers 413 without reading the rest, so the client may instead see the connection drop.
+        try:
+            status, _ = post("/notify", raw='{"title":"' + "x" * (9 * 1024 * 1024) + '"}')
+        except (ConnectionError, urllib.error.URLError):
+            return
+        self.assertEqual(status, 413)
 
 
 if __name__ == "__main__":
