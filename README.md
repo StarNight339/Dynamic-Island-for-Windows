@@ -78,6 +78,12 @@ for i, item in enumerate(items, 1):
                   json={"id": "batch", "title": "Processing", "body": f"{i}/{len(items)}", "progress": i * 100 / len(items)})
 ```
 
+Unit test (ไม่ต้องเปิดแอป, รันใน GitHub Actions ทุก push / PR ด้วย):
+
+```
+dotnet test tests/DynamicIsland.Tests
+```
+
 ทดสอบ API ทั้งหมด (ต้องเปิดแอปไว้ก่อน ใช้แค่ Python standard library):
 
 ```powershell
