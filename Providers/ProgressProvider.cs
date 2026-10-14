@@ -64,6 +64,10 @@ public sealed class ProgressProvider(ActivityManager activities)
     {
         // An entry whose activity already expired starts over fresh rather than inheriting old fields.
         if (_tasks.TryGetValue(key, out var t) && activities.Contains(key)) return t;
+
+        // Entries whose activity expired (finished, or the sender went quiet) are never looked up again unless the
+        // same id comes back; drop them here so senders using a fresh id per task don't grow this forever.
+        foreach (var stale in _tasks.Keys.Where(k => !activities.Contains(k)).ToList()) _tasks.Remove(stale);
         var view = new ProgressView();
         t = new Entry(new Activity { Id = key, View = view, Priority = Priority.Progress }, view);
         _tasks[key] = t;
