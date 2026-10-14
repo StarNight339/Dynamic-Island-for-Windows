@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows.Threading;
 using DynamicIsland.Core.Settings;
@@ -105,6 +106,18 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
                 return;
             }
 
+            if (!CanWriteNextToExe())
+            {
+                // e.g. Program Files. Checking every 6 hours would just repeat the same failure, so stay quiet unless asked.
+                if (manual)
+                {
+                    Notify($"Version {tag} is available", "Can't update in this folder; opening the download page", "",
+                        "AccentClaude", 8);
+                    Process.Start(new ProcessStartInfo(release.PageUrl) { UseShellExecute = true });
+                }
+                return;
+            }
+
             Notify($"Updating to {tag}", "Downloading…", "", "AccentClaude", 30);
             await InstallAsync(release);
             Restart();
@@ -128,16 +141,18 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
         var tag = root.GetProperty("tag_name").GetString() ?? "";
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var version)) return null; // e.g. the old "pre-release" tag
 
-        string? assetUrl = null;
+        string? assetUrl = null, digest = null;
         long size = 0;
         foreach (var asset in root.GetProperty("assets").EnumerateArray())
         {
             if (!(asset.GetProperty("name").GetString() ?? "").EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase)) continue;
             assetUrl = asset.GetProperty("browser_download_url").GetString();
             size = asset.GetProperty("size").GetInt64();
+            // "sha256:<hex>", computed by GitHub on upload (assets uploaded before mid-2025 don't have it).
+            if (asset.TryGetProperty("digest", out var d) && d.ValueKind == JsonValueKind.String) digest = d.GetString();
             break;
         }
-        return new Release(Normalize(version), root.GetProperty("html_url").GetString() ?? "", assetUrl, size);
+        return new Release(Normalize(version), root.GetProperty("html_url").GetString() ?? "", assetUrl, size, digest);
     }
 
     private static async Task InstallAsync(Release release)
@@ -157,6 +172,11 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
             File.Delete(downloaded);
             throw new IOException("The download was incomplete.");
         }
+        if (release.Digest is { } digest && !await MatchesDigestAsync(downloaded, digest))
+        {
+            File.Delete(downloaded);
+            throw new IOException("The download is corrupted (checksum mismatch).");
+        }
 
         File.Move(exe, old, overwrite: true);
         try
@@ -167,6 +187,31 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
         {
             File.Move(old, exe); // put the running version back so the next launch still works
             throw;
+        }
+    }
+
+    private static async Task<bool> MatchesDigestAsync(string path, string digest)
+    {
+        const string prefix = "sha256:";
+        if (!digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return true; // unknown algorithm; size check only
+        await using var file = File.OpenRead(path);
+        var actual = Convert.ToHexString(await SHA256.HashDataAsync(file));
+        return actual.Equals(digest[prefix.Length..], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The update is written next to the exe and swapped in by renaming, so that folder must be writable.</summary>
+    private static bool CanWriteNextToExe()
+    {
+        try
+        {
+            var probe = Environment.ProcessPath! + ".write-test";
+            File.WriteAllBytes(probe, []);
+            File.Delete(probe);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 
@@ -186,5 +231,5 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
     /// <summary>"0.2" and "0.2.0.0" compare equal.</summary>
     private static Version Normalize(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0));
 
-    private sealed record Release(Version Version, string PageUrl, string? AssetUrl, long Size);
+    private sealed record Release(Version Version, string PageUrl, string? AssetUrl, long Size, string? Digest);
 }
