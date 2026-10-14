@@ -194,7 +194,17 @@ public partial class App : Application
             g.DrawPath(pen, path);
             g.FillEllipse(Drawing.Brushes.LimeGreen, 21, 13, 6, 6);
         }
-        return Drawing.Icon.FromHandle(bmp.GetHicon());
+        // Icon.FromHandle doesn't take ownership of the HICON, so copy it into an Icon that does and free the original.
+        var hicon = bmp.GetHicon();
+        try
+        {
+            using var borrowed = Drawing.Icon.FromHandle(hicon);
+            return (Drawing.Icon)borrowed.Clone();
+        }
+        finally
+        {
+            NativeMethods.DestroyIcon(hicon);
+        }
     }
 
     private static ImageSource ToImageSource(Drawing.Icon icon) =>
