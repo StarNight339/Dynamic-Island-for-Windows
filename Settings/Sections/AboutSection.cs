@@ -36,5 +36,22 @@ public sealed class AboutSection(SettingsStore store, Updater updater) : Setting
                 Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
             },
         };
+        yield return new ActionItem
+        {
+            Label = "Error log",
+            Description = "Errors the app recovered from (or crashed on). Attach it when reporting a bug",
+            ButtonText = "Open",
+            Run = () =>
+            {
+                if (File.Exists(CrashLog.FilePath))
+                {
+                    Process.Start(new ProcessStartInfo(CrashLog.FilePath) { UseShellExecute = true });
+                    return;
+                }
+                var dir = Path.GetDirectoryName(CrashLog.FilePath)!;
+                Directory.CreateDirectory(dir);
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
+            },
+        };
     }
 }

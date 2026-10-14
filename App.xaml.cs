@@ -28,6 +28,7 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        CrashLog.Install(this);
         base.OnStartup(e);
 
         Updater.WaitForPrevious(e.Args);
