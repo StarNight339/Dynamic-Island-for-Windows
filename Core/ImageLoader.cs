@@ -20,6 +20,11 @@ public static class ImageLoader
     private const long MaxBytes = 5 * 1024 * 1024;
     private const int DecodeSize = 128; // badge is 44 DIPs; enough for 200% scaling
     private const int MaxFrames = 300;
+
+    // The GIF header's canvas size is attacker/sender controlled (a few KB can claim 65535x65535). Compositing works
+    // on a full-size canvas per frame, so cap the side and the total pixels across all frames.
+    private const int MaxGifSide = 2048;
+    private const long MaxGifPixelsTotal = 64L * 1024 * 1024;
     private static readonly HttpClient Http = CreateHttp();
 
     private static HttpClient CreateHttp()
@@ -40,7 +45,7 @@ public static class ImageLoader
         }
         catch (Exception ex) when (ex is IOException or HttpRequestException or TaskCanceledException
                                        or FormatException or NotSupportedException or UnauthorizedAccessException
-                                       or ArgumentException or InvalidOperationException)
+                                       or ArgumentException or InvalidOperationException or OverflowException)
         {
             return null; // fall back to the icon rather than failing the whole notification
         }
@@ -94,10 +99,14 @@ public static class ImageLoader
 
         int width = Query<ushort?>(decoder.Metadata, "/logscrdesc/Width") ?? decoder.Frames[0].PixelWidth;
         int height = Query<ushort?>(decoder.Metadata, "/logscrdesc/Height") ?? decoder.Frames[0].PixelHeight;
+        if (width <= 0 || height <= 0 || width > MaxGifSide || height > MaxGifSide)
+            return null; // too big to animate; Decode() still shows the first frame, downscaled while decoding
+
         var canvas = new int[width * height];
         int[]? restore = null;
 
-        var count = Math.Min(decoder.Frames.Count, MaxFrames);
+        var budget = (int)Math.Max(2, MaxGifPixelsTotal / ((long)width * height));
+        var count = Math.Min(Math.Min(decoder.Frames.Count, MaxFrames), budget);
         var frames = new ImageSource[count];
         var delays = new TimeSpan[count];
         (int X, int Y, int W, int H, byte Disposal) prev = default;
@@ -157,6 +166,7 @@ public static class ImageLoader
 
     private static void FillRect(int[] canvas, int width, int height, int x, int y, int w, int h)
     {
+        if (x >= width || y >= height) return; // frame lies outside the canvas; nothing to clear
         for (var row = y; row < Math.Min(y + h, height); row++)
             Array.Clear(canvas, row * width + x, Math.Max(0, Math.Min(w, width - x)));
     }
