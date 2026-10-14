@@ -19,6 +19,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The unit test project lives under tests/ with its own csproj; keep its sources (and obj/) out of the app. -->
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- WinForms is only used for the tray icon; keep its types out of the global namespace so they don't clash with WPF. -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
