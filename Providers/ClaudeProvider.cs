@@ -11,6 +11,12 @@ namespace DynamicIsland.Providers;
 /// </summary>
 public sealed class ClaudeProvider
 {
+    /// <summary>
+    /// A session that sends no hook events for this long is assumed dead (Claude Code crashed or was killed, so no
+    /// Stop / SessionEnd ever arrives) and drops off the island. Every event resets it; long tool runs fit inside.
+    /// </summary>
+    private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(20);
+
     private readonly ActivityManager _activities;
     private readonly Notifier _notifier;
     private readonly SettingsStore _settings;
@@ -53,7 +59,7 @@ public sealed class ClaudeProvider
                 var s = GetOrCreate(key);
                 s.View.Restart();
                 s.View.Set(ClaudeView.Phase.Working, project, Truncate(prompt ?? message, 120));
-                _activities.Post(s.Activity);
+                _activities.Post(s.Activity, StaleAfter);
                 break;
             }
 
@@ -64,7 +70,11 @@ public sealed class ClaudeProvider
                 if (!_activities.Contains(key))
                 {
                     s.View.Restart();
-                    _activities.Post(s.Activity);
+                    _activities.Post(s.Activity, StaleAfter);
+                }
+                else
+                {
+                    _activities.Extend(key, StaleAfter);
                 }
                 var detail = string.IsNullOrEmpty(toolName) ? message : $"Running {toolName}";
                 s.View.Set(ClaudeView.Phase.Working, project, detail ?? "");
@@ -77,7 +87,10 @@ public sealed class ClaudeProvider
             {
                 // Only flip an in-progress session; the idle "waiting for input" ping after Stop shouldn't revive it.
                 if (_sessions.TryGetValue(key, out var s) && _activities.Contains(key))
+                {
                     s.View.Set(ClaudeView.Phase.Waiting, project, message ?? "");
+                    _activities.Extend(key, null); // waiting on the user can take hours; keep it until they answer
+                }
                 _notifier.Show("Claude needs you", Join(message ?? "Waiting for your input", project), "\uE7BA",
                     Notifier.Brush("AccentClaude"), 8);
                 break;

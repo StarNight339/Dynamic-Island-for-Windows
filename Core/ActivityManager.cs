@@ -41,6 +41,16 @@ public sealed class ActivityManager
 
     public bool Contains(string id) => _items.ContainsKey(id);
 
+    /// <summary>
+    /// Changes when a shown activity expires (null = never) without re-posting it, so it keeps its place among
+    /// equal-priority activities. Does nothing if <paramref name="id"/> isn't shown.
+    /// </summary>
+    public void Extend(string id, TimeSpan? duration)
+    {
+        if (_items.TryGetValue(id, out var activity))
+            activity.ExpiresAt = duration is { } d ? DateTime.UtcNow + d : null;
+    }
+
     /// <summary>Re-evaluates which activity wins. Call after changing an activity's priority.</summary>
     public void Recompute()
     {
