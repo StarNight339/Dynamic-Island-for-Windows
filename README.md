@@ -44,6 +44,8 @@ dotnet publish -c Release -r win-x64 --no-self-contained -p:PublishSingleFile=tr
 
 ## Local API (`http://localhost:5179/`)
 
+รับเฉพาะ request จากโปรแกรมในเครื่อง (curl, Python, hook ฯลฯ) ถ้ามี header `Origin` (เช่นเรียกจากหน้าเว็บในเบราว์เซอร์) จะได้ 403 เพื่อกันเว็บอื่นแอบส่งแจ้งเตือนปลอม และ body ต้องไม่เกิน 8 MB
+
 ```powershell
 # แจ้งเตือน: icon = ตัวอักษร Segoe Fluent Icons หรืออีโมจิ, image = รูป (แทน icon), color = hex, duration = วินาที
 curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"Build passed\",\"body\":\"All 42 tests green\",\"color\":\"#34C759\",\"duration\":5}'
