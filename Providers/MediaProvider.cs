@@ -109,13 +109,20 @@ public sealed class MediaProvider
                           GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
             var timeline = session.GetTimelineProperties();
 
-            var key = $"{props.Title}\n{props.Artist}";
+            // Players often publish the title first and the thumbnail a moment later; include whether there is one
+            // so that second update still loads the cover.
+            var key = $"{props.Title}\n{props.Artist}\n{props.Thumbnail is not null}";
             if (key != _artKey)
             {
                 _artKey = key;
-                _art = await LoadArtAsync(props.Thumbnail);
+                _art = null; // don't show the previous track's cover while this one loads
+                var art = await LoadArtAsync(props.Thumbnail);
+                // Refreshes overlap (every playback/timeline event queues one). If the track changed again while
+                // this cover was loading, a newer refresh owns _art now; writing ours would pin the wrong cover.
+                if (key == _artKey) _art = art;
             }
             if (!ReferenceEquals(session, _session)) return; // session changed while awaiting
+            if (key != _artKey) return; // a newer track arrived while awaiting; its refresh will update the view
             if (!_settings.Get<MediaSettings>().Enabled) return; // switched off while awaiting
 
             _view.Update(props.Title, props.Artist, _art, playing);
