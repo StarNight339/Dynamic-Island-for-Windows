@@ -44,6 +44,21 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetWindowRect(IntPtr hWnd, out RECT rect);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X, Y; }
+
+    [LibraryImport("user32.dll", EntryPoint = "GetCursorPos")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetCursorPosNative(out POINT point);
+
+    /// <summary>Cursor position in physical screen pixels (WPF's mouse state is stale after an OLE drag).</summary>
+    public static bool GetCursorPos(out int x, out int y)
+    {
+        var ok = GetCursorPosNative(out var p);
+        (x, y) = (p.X, p.Y);
+        return ok;
+    }
+
     [LibraryImport("user32.dll")]
     private static partial IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
 

@@ -14,6 +14,9 @@
 
             <DockPanel Height="34">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="ShelfButton" Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15"
+                            Foreground="{StaticResource AccentOrange}" Content="&#xE8B7;" ToolTip="File shelf"
+                            Click="Shelf_Click" />
                     <Button x:Name="CancelTimerButton" Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="13"
                             Foreground="{StaticResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel timer"
                             Click="CancelTimer_Click" />

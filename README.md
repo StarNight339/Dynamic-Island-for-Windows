@@ -10,6 +10,7 @@
 | นาฬิกา + ตั้งเวลาด่วน | เอาเมาส์ชี้ island ตอนว่าง หรือคลิกขวา |
 | สถานะ Claude Code | Claude Code hooks → `POST /claude` |
 | ข้อความอะไรก็ได้ | `POST /notify` |
+| ชั้นวางไฟล์ (File shelf) | ลากไฟล์/โฟลเดอร์มาวางบน island |
 
 เอาเมาส์ชี้ = ขยาย, คลิกขวา = Quick Panel (ตั้งเวลา, เปิด/ปิดแต่ละระบบ, ⚙ Settings, ออก), คลิกไอคอนใน tray = เปิดหน้าต่าง Settings
 island จะซ่อนตัวเองเมื่อมีแอปเต็มจอ (เกม, วิดีโอ)
@@ -91,6 +92,22 @@ dotnet test tests/DynamicIsland.Tests
 ```powershell
 python -m unittest discover -s tests -v
 ```
+
+## File shelf
+
+ลากไฟล์หรือโฟลเดอร์จาก Explorer มาวางบน island ตัว island จะขยายเป็นที่วางไฟล์ แล้วเก็บไฟล์ไว้บนชั้นวาง
+(เก็บแค่ path ไม่ได้คัดลอกไฟล์จริง และยังอยู่หลังปิดแล้วเปิดแอปใหม่ บันทึกใน `%AppData%\DynamicIsland\shelf.json`)
+
+| ทำอะไร | วิธี |
+|---|---|
+| Copy file (เอาไปวางใน Explorer / แชท) | ปุ่ม 📋 บนไฟล์ หรือ **Copy all** |
+| Copy path (เป็นข้อความ) | ปุ่ม 🔗 บนไฟล์ หรือ **Paths** |
+| ลากออกไปวางที่อื่น | ลากไฟล์จาก shelf ไปวางในแอปอื่นได้เลย |
+| เปิดไฟล์ / เปิดโฟลเดอร์ | ดับเบิลคลิกที่ไฟล์ / ปุ่ม 📂 |
+| ลบออกจาก shelf / ล้างทั้งหมด | ปุ่ม ✕ / **Clear** (ไฟล์จริงไม่ถูกลบ) |
+
+เปิด shelf ได้จากปุ่มโฟลเดอร์ใน Quick Panel (คลิกขวา) หรือชี้ที่ pill "N files" ไฟล์ที่ถูกย้าย/ลบไปแล้วจะหายจาก shelf เอง
+ตั้งค่าได้ใน Settings → File shelf
 
 ## Claude Code integration
 

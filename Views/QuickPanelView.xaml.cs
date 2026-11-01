@@ -14,6 +14,7 @@ public partial class QuickPanelView : IslandView
     public event Action<int>? TimerRequested;
     public event Action? CancelTimerRequested;
     public event Action? SettingsRequested;
+    public event Action? ShelfRequested;
     public event Action? ExitRequested;
 
     public override Size CompactSize => new(124, 32);
@@ -24,8 +25,11 @@ public partial class QuickPanelView : IslandView
     public QuickPanelView() => InitializeComponent();
 
     /// <summary>Rebuilds the panel; call before showing so the island sizes itself to the content.</summary>
-    public void Populate(IEnumerable<int> presets, bool timerRunning, IReadOnlyList<ToggleItem> toggles)
+    public void Populate(IEnumerable<int> presets, bool timerRunning, IReadOnlyList<ToggleItem> toggles, int? shelfCount = null)
     {
+        ShelfButton.Visibility = shelfCount is null ? Visibility.Collapsed : Visibility.Visible;
+        ShelfButton.ToolTip = shelfCount is { } n ? $"File shelf ({n})" : null;
+
         TimerChips.Children.Clear();
         foreach (var minutes in presets.Take(4))
         {
@@ -72,6 +76,7 @@ public partial class QuickPanelView : IslandView
     }
 
     private void CancelTimer_Click(object sender, RoutedEventArgs e) => CancelTimerRequested?.Invoke();
+    private void Shelf_Click(object sender, RoutedEventArgs e) => ShelfRequested?.Invoke();
     private void Settings_Click(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke();
     private void Exit_Click(object sender, RoutedEventArgs e) => ExitRequested?.Invoke();
 }

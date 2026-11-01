@@ -21,6 +21,7 @@ public partial class IslandWindow : Window
     private readonly DispatcherTimer _hoverDelay = new() { Interval = TimeSpan.FromMilliseconds(120) };
     private readonly DispatcherTimer _leaveDelay = new() { Interval = TimeSpan.FromMilliseconds(300) };
     private readonly DispatcherTimer _housekeeping = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _dragWatch = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
     private IslandView? _shown;
     private bool _hover;
@@ -32,6 +33,15 @@ public partial class IslandWindow : Window
 
     /// <summary>The pointer left the island (after the leave delay).</summary>
     public event Action? HoverEnded;
+
+    /// <summary>Files from another app are being dragged over the island.</summary>
+    public event Action? FileDragEntered;
+
+    /// <summary>Files from another app were dropped on the island.</summary>
+    public event Action<string[]>? FilesDropped;
+
+    /// <summary>Whether the island takes dropped files (the file shelf is on).</summary>
+    public bool AcceptsFiles { get; set; }
 
     public IslandState State { get; private set; } = IslandState.Idle;
 
@@ -49,6 +59,7 @@ public partial class IslandWindow : Window
         _hoverDelay.Tick += (_, _) => { _hoverDelay.Stop(); _hover = true; Render(); };
         _leaveDelay.Tick += (_, _) => { _leaveDelay.Stop(); _hover = false; HoverEnded?.Invoke(); Render(); };
         _housekeeping.Tick += (_, _) => Housekeeping();
+        _dragWatch.Tick += (_, _) => CheckCursorAfterDrag();
 
         SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.InvokeAsync(PositionWindow);
         Render();
@@ -158,5 +169,82 @@ public partial class IslandWindow : Window
         _hoverDelay.Stop();
         _hover = true;
         QuickPanelRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Re-reads where the cursor is and closes the island if it's gone. Needed after dragging a file out of the
+    /// island: the OLE drag loop swallows the MouseLeave, so the island would otherwise stay open.
+    /// </summary>
+    public void RecheckHover()
+    {
+        _dragWatch.Stop();
+        _dragWatch.Start();
+        CheckCursorAfterDrag();
+    }
+
+    /// <summary>
+    /// Until WPF sees the mouse again (MouseEnter), watch the cursor ourselves: it may leave over transparent pixels,
+    /// which send no messages, and then MouseLeave never comes.
+    /// </summary>
+    private void CheckCursorAfterDrag()
+    {
+        if (!_hover || Island.IsMouseOver)
+        {
+            _dragWatch.Stop();
+            return;
+        }
+        if (!NativeMethods.GetCursorPos(out var x, out var y) || PresentationSource.FromVisual(Pill) is null) return;
+        var p = Pill.PointFromScreen(new Point(x, y));
+        var inside = p.X >= 0 && p.Y >= 0 && p.X <= Pill.ActualWidth && p.Y <= Pill.ActualHeight;
+        if (inside) return;
+
+        _dragWatch.Stop();
+        _hoverDelay.Stop();
+        _leaveDelay.Start();
+    }
+
+    private bool IsExternalFileDrag(DragEventArgs e) =>
+        AcceptsFiles && e.Data.GetDataPresent(DataFormats.FileDrop) && !e.Data.GetDataPresent(FileActions.ShelfDragFormat);
+
+    private void Island_DragEnter(object sender, DragEventArgs e)
+    {
+        // DragLeave/DragEnter also fire when moving between the island's own children, so the leave delay smooths that out.
+        _leaveDelay.Stop();
+        if (!IsExternalFileDrag(e))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+
+        // Open straight away so the island grows into a big drop zone.
+        _hoverDelay.Stop();
+        _hover = true;
+        FileDragEntered?.Invoke();
+        Render();
+    }
+
+    private void Island_DragOver(object sender, DragEventArgs e)
+    {
+        _leaveDelay.Stop();
+        e.Effects = IsExternalFileDrag(e) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Island_DragLeave(object sender, DragEventArgs e)
+    {
+        if (_hover) _leaveDelay.Start();
+    }
+
+    private void Island_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (!IsExternalFileDrag(e) || e.Data.GetData(DataFormats.FileDrop) is not string[] { Length: > 0 } files) return;
+        e.Effects = DragDropEffects.Copy;
+        _leaveDelay.Stop();
+        FilesDropped?.Invoke(files);
+        RecheckHover();
     }
 }

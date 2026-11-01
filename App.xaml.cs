@@ -49,6 +49,7 @@ public partial class App : Application
 
         var timer = new ClockTimerProvider(activities, notifier, clock, settings);
         var claude = new ClaudeProvider(activities, notifier, settings);
+        var shelf = new FileShelfProvider(activities, window, settings);
 
         // Sidebar order. A new system adds its section here (see README "Adding a settings page").
         _registry = new SettingsRegistry([
@@ -58,11 +59,12 @@ public partial class App : Application
             new MediaSection(settings),
             new VolumeSection(settings),
             new ClaudeSection(settings),
+            new FileShelfSection(settings, shelf.Shelf),
             new ApiSection(settings, notifier),
             new AboutSection(settings, updater),
         ]);
 
-        SetUpQuickPanel(window, activities, timer);
+        SetUpQuickPanel(window, activities, timer, shelf);
         window.Show();
 
         CreateTray();
@@ -109,7 +111,8 @@ public partial class App : Application
     }
 
     /// <summary>Right-click turns the island into a panel of quick timers and toggles; leaving it closes it.</summary>
-    private void SetUpQuickPanel(IslandWindow window, ActivityManager activities, ClockTimerProvider timer)
+    private void SetUpQuickPanel(IslandWindow window, ActivityManager activities, ClockTimerProvider timer,
+        FileShelfProvider shelf)
     {
         var view = new QuickPanelView();
         var activity = new Activity { Id = QuickPanelId, View = view, Priority = Priority.QuickPanel, AutoExpand = true };
@@ -122,7 +125,8 @@ public partial class App : Application
                 Close();
                 return;
             }
-            view.Populate(_settings!.Get<TimerSettings>().Presets, timer.IsRunning, _registry!.BuildQuickToggles().ToList());
+            view.Populate(_settings!.Get<TimerSettings>().Presets, timer.IsRunning, _registry!.BuildQuickToggles().ToList(),
+                _settings.Get<FileShelfSettings>().Enabled ? shelf.Shelf.Items.Count : null);
             activities.Post(activity);
         };
         window.HoverEnded += Close;
@@ -141,6 +145,11 @@ public partial class App : Application
         {
             Close();
             ShowSettings();
+        };
+        view.ShelfRequested += () =>
+        {
+            Close();
+            shelf.Open();
         };
         view.ExitRequested += Quit;
     }

@@ -42,6 +42,14 @@ public sealed class ClaudeSettings : ISettingsModel
     public bool Enabled { get; set; } = true;
 }
 
+public sealed class FileShelfSettings : ISettingsModel
+{
+    public static string SectionId => "fileShelf";
+    public bool Enabled { get; set; } = true;
+    public bool ShowPill { get; set; } = true;
+    public int MaxItems { get; set; } = 30;
+}
+
 public sealed class ApiSettings : ISettingsModel
 {
     public static string SectionId => "api";
