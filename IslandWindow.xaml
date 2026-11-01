@@ -11,7 +11,9 @@
     <Grid x:Name="Root">
         <Grid x:Name="Island" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
               MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
-              MouseRightButtonUp="Island_MouseRightButtonUp">
+              MouseRightButtonUp="Island_MouseRightButtonUp"
+              AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver"
+              DragLeave="Island_DragLeave" Drop="Island_Drop">
             <!-- The black capsule: its size and corner radius are driven by springs. -->
             <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top" />
 

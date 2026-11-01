@@ -13,6 +13,10 @@ public enum IslandState
 public static class Priority
 {
     public const int MediaPaused = 20;
+
+    /// <summary>The resting shelf pill while files are on the shelf.</summary>
+    public const int Shelf = 30;
+
     public const int Media = 40;
     public const int Timer = 50;
     public const int ClaudeWorking = 60;
@@ -20,6 +24,10 @@ public static class Priority
     public const int Battery = 80;
     public const int Volume = 90;
     public const int Notification = 100;
+
+    /// <summary>The shelf opened by a file drag or the quick panel; stays above notifications while in use.</summary>
+    public const int ShelfOpen = 105;
+
     public const int QuickPanel = 110;
 }
 
