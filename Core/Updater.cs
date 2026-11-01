@@ -118,7 +118,20 @@ public sealed class Updater(Notifier notifier, ProgressProvider progress, Settin
         try
         {
             var release = await GetLatestAsync();
-            if (release is null || release.Version <= Current)
+            if (release.Version is null)
+            {
+                // Saying "up to date" here would hide a newer release we just can't read (that is how v0.4.0 missed
+                // v0.4.1-F). Say so, and offer the page so the user can still get it.
+                if (manual)
+                {
+                    Notify("Can't read the latest version",
+                        $"Release \"{release.Name}\" has no version number we understand; opening the download page",
+                        "", "AccentOrange", 8);
+                    Process.Start(new ProcessStartInfo(release.PageUrl) { UseShellExecute = true });
+                }
+                return;
+            }
+            if (release.Version <= Current)
             {
                 if (manual) Notify("You're up to date", $"Version {DisplayVersion}", "", "AccentGreen");
                 return;
@@ -163,12 +176,12 @@ public sealed class Updater(Notifier notifier, ProgressProvider progress, Settin
         }
     }
 
-    private static async Task<Release?> GetLatestAsync()
+    private static async Task<Release> GetLatestAsync()
     {
         using var doc = JsonDocument.Parse(await Http.GetStringAsync(LatestUrl));
         var root = doc.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
-        if (ParseTag(tag) is not { } version) return null; // e.g. the old "pre-release" tag
+        var version = ParseTag(tag); // null for tags that aren't versions, e.g. the old "pre-release" tag
 
         string? assetUrl = null, digest = null;
         long size = 0;
@@ -288,5 +301,5 @@ public sealed class Updater(Notifier notifier, ProgressProvider progress, Settin
     private static Version Normalize(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0));
 
     /// <param name="Name">The tag without the "v", e.g. "0.4.1-F".</param>
-    private sealed record Release(Version Version, string Name, string PageUrl, string? AssetUrl, long Size, string? Digest);
+    private sealed record Release(Version? Version, string Name, string PageUrl, string? AssetUrl, long Size, string? Digest);
 }
