@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using DynamicIsland.Core;
 
 namespace DynamicIsland.Views;
@@ -25,5 +26,13 @@ public partial class NotifyView : IslandView
 
         BadgeFill.Apply(Badge, IconText, EmojiIcon, icon, accent, image, 12);
         BadgeFill.Apply(CompactBadge, CompactIcon, CompactEmoji, icon, accent, image, 6);
+        Countdown.Background = accent;
+    }
+
+    /// <summary>Starts the bar along the bottom that empties over <paramref name="duration"/>, when the notification closes.</summary>
+    public void StartCountdown(TimeSpan duration)
+    {
+        Countdown.Visibility = Visibility.Visible;
+        CountdownScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0, duration));
     }
 }

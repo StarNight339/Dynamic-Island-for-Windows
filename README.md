@@ -11,6 +11,10 @@
 | สถานะ Claude Code | Claude Code hooks → `POST /claude` |
 | ข้อความอะไรก็ได้ | `POST /notify` |
 | ชั้นวางไฟล์ (File shelf) | ลากไฟล์/โฟลเดอร์มาวางบน island |
+| ไฟล์ที่กำลังดาวน์โหลดจากเบราว์เซอร์ | โฟลเดอร์ Downloads (Chrome, Edge, Firefox ฯลฯ) |
+
+progress bar มีให้ในหลายที่: การอัปเดตแอป (MB / %), timer นับถอยหลัง, Claude ตอนกำลังทำงาน (แถบวิ่ง),
+แจ้งเตือน (แถบเล็กๆ ด้านล่างบอกว่าเหลือเวลาอีกเท่าไหร่ก่อนหายไป), ดาวน์โหลด และ `POST /notify` ที่ส่ง `progress`
 
 เอาเมาส์ชี้ = ขยาย, คลิกขวา = Quick Panel (ตั้งเวลา, เปิด/ปิดแต่ละระบบ, ⚙ Settings, ออก), คลิกไอคอนใน tray = เปิดหน้าต่าง Settings
 island จะซ่อนตัวเองเมื่อมีแอปเต็มจอ (เกม, วิดีโอ)
@@ -24,14 +28,43 @@ island จะซ่อนตัวเองเมื่อมีแอปเต�
 | `DynamicIsland-<version>-win-x64.exe` | ~30 MB | ต้องติดตั้ง [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) ก่อน |
 | `DynamicIsland-<version>-win-x64-standalone.exe` | ~80 MB | รวม runtime มาแล้ว ดับเบิลคลิกได้เลย |
 
-ไฟล์ถูก build อัตโนมัติโดย GitHub Actions ทุกครั้งที่ publish release ใหม่
+### เลขเวอร์ชันและ release อัตโนมัติ
+
+ทุกครั้งที่ push เข้า `main` (รวมถึงตอน merge PR) GitHub Actions จะ build, รันเทสต์ แล้วปล่อย release ใหม่ให้เอง
+ถ้าไม่อยากให้ปล่อย release ให้ใส่ `[skip release]` ไว้ในข้อความ commit
+
+รูปแบบเวอร์ชันคือ **`0.X.Y-Z`** เช่น `v0.4.1-F`
+
+| ส่วน | ความหมาย |
+|---|---|
+| `X` (0–9) | version ขยับเมื่อ patch เกิน 9 (0.4.9 → 0.5.0) |
+| `Y` (0–9) | patch ขยับ +1 ทุก release |
+| `Z` (A–Z) | ประเภทการเปลี่ยนแปลง ดูจากชื่อ branch ของ PR (`feature/...`, `fix/...`) หรือคำนำหน้า commit (`feat:`, `fix:`, `Add ...`) |
+
+| Z | ประเภท | branch / คำนำหน้า commit |
+|---|---|---|
+| F | ฟีเจอร์ใหม่ | feat, feature, add |
+| B | แก้บั๊ก | fix, bugfix, hotfix, bug |
+| U | หน้าตา / UI | ui, style, design |
+| P | ความเร็ว | perf, performance |
+| R | ปรับโค้ด | refactor, cleanup |
+| S | ความปลอดภัย | security, sec |
+| D | เอกสาร | docs, doc, readme |
+| T | เทสต์ | test, tests |
+| C | CI / build | ci, build, release |
+| M | อื่นๆ | chore และคำอื่นทั้งหมด |
+
+คำนวณเวอร์ชันถัดไปเองได้ด้วย `.github/scripts/next-version.ps1` ถึง 0.9.9 แล้ว CI จะหยุดให้ตัดสินใจรูปแบบต่อไปเอง
+ยังสร้าง release เองบน GitHub ได้เหมือนเดิม workflow จะ build ไฟล์แล้วแนบให้
 
 ### Auto update
 
 ตั้งแต่ v0.3.0 แอปเช็ค release ล่าสุดบน GitHub หลังเปิด 30 วินาที และทุก 6 ชั่วโมง ถ้ามีเวอร์ชันใหม่จะโหลดไฟล์แบบเดียวกับที่ใช้อยู่
 (standalone หรือไม่) มาแทนที่ แล้วรีสตาร์ทเอง ปิดได้ หรือกดเช็คเองได้ที่ Settings → About
 
-- tag ของ release ต้องเป็นเลขเวอร์ชัน เช่น `v0.3.0` (workflow ฝังเลขนี้ลงใน exe) และต้องไม่ติ๊ก pre-release
+- ระหว่างโหลดจะมี progress bar บน island บอก MB และ % ที่โหลดไปแล้ว
+- tag ของ release ต้องเป็นเลขเวอร์ชัน เช่น `v0.4.1-F` หรือ `v0.3.0` (workflow ฝังเลขนี้ลงใน exe) และต้องไม่ติ๊ก pre-release
+- เวอร์ชัน v0.4.0 ลงไปอ่าน tag ที่มี `-Z` ไม่ออก ต้องโหลด v0.4.1 ไปติดตั้งเองหนึ่งครั้ง หลังจากนั้นจะอัปเดตเองได้ตามปกติ
 - อัปเดตเองได้เฉพาะไฟล์ exe เดี่ยวจากหน้า Releases ตัวที่ build เอง (`dotnet run`) จะแค่เปิดหน้าดาวน์โหลดให้
 - ถ้าวาง exe ไว้ในโฟลเดอร์ที่ไม่มีสิทธิ์เขียน (เช่น Program Files) จะอัปเดตไม่ได้
 
@@ -108,6 +141,15 @@ python -m unittest discover -s tests -v
 
 เปิด shelf ได้จากปุ่มโฟลเดอร์ใน Quick Panel (คลิกขวา) หรือชี้ที่ pill "N files" ไฟล์ที่ถูกย้าย/ลบไปแล้วจะหายจาก shelf เอง
 ตั้งค่าได้ใน Settings → File shelf
+
+## Downloads
+
+ตอนดาวน์โหลดไฟล์จากเบราว์เซอร์ island จะแสดงชื่อไฟล์ ขนาดที่โหลดมาแล้ว และความเร็ว
+เบราว์เซอร์ไม่บอกขนาดไฟล์ทั้งหมด แถบเลยเป็นแบบวิ่งไปเรื่อยๆ แทน % พอโหลดเสร็จจะขึ้น "Downloaded" สีเขียว
+
+- ดูไฟล์ชั่วคราวในโฟลเดอร์ Downloads: `.crdownload` (Chrome, Edge, Brave), `.part` (Firefox), `.partial`, `.opdownload`
+- ถ้าเบราว์เซอร์ตั้งให้เซฟไปโฟลเดอร์อื่น จะไม่เห็นการดาวน์โหลดนั้น
+- Settings → Downloads ปิดได้ และตั้งให้ไฟล์ที่โหลดเสร็จเข้า File shelf อัตโนมัติได้
 
 ## Claude Code integration
 

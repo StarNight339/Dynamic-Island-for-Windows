@@ -37,5 +37,13 @@
                                  TextWrapping="Wrap" MaxHeight="54" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </Grid>
+
+        <!-- Shrinks to nothing as the notification's time runs out. -->
+        <Border x:Name="Countdown" Height="2" CornerRadius="1" Opacity="0.6" Margin="32,0,32,6"
+                VerticalAlignment="Bottom" Visibility="Collapsed" RenderTransformOrigin="0,0.5">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CountdownScale" />
+            </Border.RenderTransform>
+        </Border>
     </Grid>
 </local:IslandView>

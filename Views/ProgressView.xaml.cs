@@ -25,6 +25,7 @@ public partial class ProgressView : IslandView
 
         _accent = accent;
         Bar.Foreground = CompactBar.Foreground = CompactPercent.Foreground = accent;
+        Busy.Foreground = CompactBusy.Foreground = accent;
         BadgeFill.Apply(Badge, IconText, EmojiIcon, icon, accent, image, 12);
         BadgeFill.Apply(CompactBadge, CompactIcon, CompactEmoji, icon, accent, image, 6);
     }
@@ -32,8 +33,24 @@ public partial class ProgressView : IslandView
     /// <param name="fraction">0..1</param>
     public void SetProgress(double fraction)
     {
+        ShowBusy(false);
         Bar.Value = CompactBar.Value = fraction;
         Percent.Text = CompactPercent.Text = $"{Math.Floor(fraction * 100):0}%";
+    }
+
+    /// <summary>No known total (e.g. a browser download): a sliding bar, with <paramref name="status"/> in place of the percent.</summary>
+    /// <param name="compactStatus">Shorter text for the pill; defaults to <paramref name="status"/>.</param>
+    public void SetIndeterminate(string status, string? compactStatus = null)
+    {
+        ShowBusy(true);
+        Percent.Text = status;
+        CompactPercent.Text = compactStatus ?? status;
+    }
+
+    private void ShowBusy(bool busy)
+    {
+        Busy.Visibility = CompactBusy.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        Bar.Visibility = CompactBar.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>Full green bar; the provider lets the activity expire shortly after.</summary>

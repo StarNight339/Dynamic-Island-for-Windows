@@ -10,13 +10,15 @@ public sealed class Notifier(ActivityManager activities)
     public void Show(string title, string? body, string icon, Brush accent, double seconds = 5, NotifyImage? image = null)
     {
         var view = new NotifyView(title, body, icon, accent, image);
+        var duration = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 60));
+        view.StartCountdown(duration);
         activities.Post(new Activity
         {
             Id = "notify",
             View = view,
             Priority = Priority.Notification,
             AutoExpand = true,
-        }, TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 60)));
+        }, duration);
     }
 
     public static Brush Brush(string resourceKey) => (Brush)Application.Current.FindResource(resourceKey);

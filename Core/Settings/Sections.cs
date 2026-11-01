@@ -50,6 +50,13 @@ public sealed class FileShelfSettings : ISettingsModel
     public int MaxItems { get; set; } = 30;
 }
 
+public sealed class DownloadSettings : ISettingsModel
+{
+    public static string SectionId => "downloads";
+    public bool Enabled { get; set; } = true;
+    public bool AddToShelf { get; set; }
+}
+
 public sealed class ApiSettings : ISettingsModel
 {
     public static string SectionId => "api";
