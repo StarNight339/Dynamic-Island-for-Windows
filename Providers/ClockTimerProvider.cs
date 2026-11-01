@@ -18,6 +18,7 @@ public sealed class ClockTimerProvider
     private readonly Activity _activity;
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private DateTime _endsAt;
+    private TimeSpan _total;
 
     public bool IsRunning => _tick.IsEnabled;
 
@@ -30,7 +31,12 @@ public sealed class ClockTimerProvider
 
         _tick.Tick += (_, _) => OnTick();
         _view.CancelRequested += Cancel;
-        _view.AddMinuteRequested += () => _endsAt += TimeSpan.FromMinutes(1);
+        _view.AddMinuteRequested += () =>
+        {
+            _endsAt += TimeSpan.FromMinutes(1);
+            _total += TimeSpan.FromMinutes(1);
+            _view.SetRemaining(_endsAt - DateTime.UtcNow, _total);
+        };
         clock.TimerRequested += minutes => Start(TimeSpan.FromMinutes(minutes));
         clock.SetTimerPresets(settings.Get<TimerSettings>().Presets);
         settings.Changed += id =>
@@ -43,7 +49,8 @@ public sealed class ClockTimerProvider
     {
         if (duration <= TimeSpan.Zero) return;
         _endsAt = DateTime.UtcNow + duration;
-        _view.SetRemaining(duration);
+        _total = duration;
+        _view.SetRemaining(duration, _total);
         _tick.Start();
         _activities.Post(_activity);
     }
@@ -57,7 +64,7 @@ public sealed class ClockTimerProvider
     private void OnTick()
     {
         var remaining = _endsAt - DateTime.UtcNow;
-        _view.SetRemaining(remaining);
+        _view.SetRemaining(remaining, _total);
         if (remaining > TimeSpan.Zero) return;
 
         Cancel();

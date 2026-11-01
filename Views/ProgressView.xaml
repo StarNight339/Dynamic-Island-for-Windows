@@ -22,6 +22,7 @@
                              VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <ProgressBar x:Name="CompactBar" Style="{StaticResource SlimBar}" Width="60" />
+                <local:IndeterminateBar x:Name="CompactBusy" Width="60" Visibility="Collapsed" />
                 <TextBlock x:Name="CompactPercent" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0"
                            MinWidth="34" TextAlignment="Right" VerticalAlignment="Center" />
             </StackPanel>
@@ -49,6 +50,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <ProgressBar x:Name="Bar" Style="{StaticResource SlimBar}" VerticalAlignment="Center" />
+                    <local:IndeterminateBar x:Name="Busy" VerticalAlignment="Center" Visibility="Collapsed" />
                     <TextBlock x:Name="Percent" Grid.Column="1" FontSize="11" Foreground="{StaticResource TextSecondary}"
                                Margin="10,0,0,0" MinWidth="30" TextAlignment="Right" VerticalAlignment="Center" />
                 </Grid>

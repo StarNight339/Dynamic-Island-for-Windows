@@ -6,8 +6,12 @@
         <Grid x:Name="CompactRoot" Margin="12,0,14,0">
             <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" FontSize="16" Foreground="{StaticResource AccentOrange}"
                        HorizontalAlignment="Left" />
-            <TextBlock x:Name="CompactRemaining" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Right"
-                       VerticalAlignment="Center" Foreground="{StaticResource AccentOrange}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <ProgressBar x:Name="CompactBar" Style="{StaticResource SlimBar}" Width="60" Margin="0,0,10,0"
+                             Foreground="{StaticResource AccentOrange}" />
+                <TextBlock x:Name="CompactRemaining" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
+                           Foreground="{StaticResource AccentOrange}" />
+            </StackPanel>
         </Grid>
 
         <Grid x:Name="ExpandedRoot" Margin="22,14,18,14" Visibility="Collapsed">
@@ -21,6 +25,8 @@
             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                 <TextBlock Text="Timer" FontSize="12" Foreground="{StaticResource TextSecondary}" />
                 <TextBlock x:Name="Remaining" FontSize="34" FontWeight="Light" Foreground="{StaticResource AccentOrange}" />
+                <ProgressBar x:Name="Bar" Style="{StaticResource SlimBar}" Margin="0,4,12,0"
+                             Foreground="{StaticResource AccentOrange}" />
             </StackPanel>
             <Button Grid.Column="2" Style="{StaticResource ChipButton}" Content="+1 min" Click="AddMinute_Click"
                     VerticalAlignment="Center" />

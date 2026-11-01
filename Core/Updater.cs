@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows.Threading;
 using DynamicIsland.Core.Settings;
+using DynamicIsland.Providers;
 
 namespace DynamicIsland.Core;
 
@@ -13,8 +15,11 @@ namespace DynamicIsland.Core;
 /// matching asset (small or standalone) next to itself, swaps it in and restarts. A running exe can't be
 /// overwritten but can be renamed, so the old one is moved to "*.old" and deleted on the next start.
 /// </summary>
-public sealed class Updater(Notifier notifier, SettingsStore settings, Action quit)
+public sealed class Updater(Notifier notifier, ProgressProvider progress, SettingsStore settings, Action quit)
 {
+    private const string ProgressId = "update";
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(150);
+
     private const string LatestUrl = "https://api.github.com/repos/StarNight339/Dynamic-Island-for-Windows/releases/latest";
     private static readonly TimeSpan FirstCheck = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
@@ -36,6 +41,30 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
     private bool _busy;
 
     public static Version Current => Normalize(typeof(Updater).Assembly.GetName().Version ?? new Version(0, 0));
+
+    /// <summary>The full release name, e.g. "0.4.1-F" (version + change-type letter), for showing to the user.</summary>
+    public static string DisplayVersion
+    {
+        get
+        {
+            var info = typeof(Updater).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            var plus = info?.IndexOf('+') ?? -1; // the SDK appends "+<commit sha>"
+            if (plus >= 0) info = info![..plus];
+            return string.IsNullOrWhiteSpace(info) ? Current.ToString(3) : info;
+        }
+    }
+
+    /// <summary>
+    /// "v0.4.1-F" → 0.4.1. The letter after the dash is the change type, not part of the ordering (the patch number
+    /// goes up on every release). Returns null for tags that aren't versions.
+    /// </summary>
+    internal static Version? ParseTag(string tag)
+    {
+        var text = tag.Trim().TrimStart('v', 'V');
+        var dash = text.IndexOf('-');
+        if (dash >= 0) text = text[..dash];
+        return Version.TryParse(text, out var version) ? Normalize(version) : null;
+    }
 
     /// <summary>True for the published single-file exe; dev builds (exe + dll) are left alone.</summary>
     public static bool CanSelfUpdate =>
@@ -91,11 +120,11 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
             var release = await GetLatestAsync();
             if (release is null || release.Version <= Current)
             {
-                if (manual) Notify("You're up to date", $"Version {Current.ToString(3)}", "", "AccentGreen");
+                if (manual) Notify("You're up to date", $"Version {DisplayVersion}", "", "AccentGreen");
                 return;
             }
 
-            var tag = release.Version.ToString(3);
+            var tag = release.Name;
             if (!CanSelfUpdate || release.AssetUrl is null)
             {
                 if (manual)
@@ -118,13 +147,13 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
                 return;
             }
 
-            Notify($"Updating to {tag}", "Downloading…", "", "AccentClaude", 30);
             await InstallAsync(release);
             Restart();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException
                                        or UnauthorizedAccessException or JsonException)
         {
+            progress.Dismiss(ProgressId);
             if (manual || ex is IOException or UnauthorizedAccessException)
                 Notify("Update failed", ex.Message, "", "AccentRed", 8);
         }
@@ -139,7 +168,7 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
         using var doc = JsonDocument.Parse(await Http.GetStringAsync(LatestUrl));
         var root = doc.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
-        if (!Version.TryParse(tag.TrimStart('v', 'V'), out var version)) return null; // e.g. the old "pre-release" tag
+        if (ParseTag(tag) is not { } version) return null; // e.g. the old "pre-release" tag
 
         string? assetUrl = null, digest = null;
         long size = 0;
@@ -152,20 +181,36 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
             if (asset.TryGetProperty("digest", out var d) && d.ValueKind == JsonValueKind.String) digest = d.GetString();
             break;
         }
-        return new Release(Normalize(version), root.GetProperty("html_url").GetString() ?? "", assetUrl, size, digest);
+        return new Release(version, tag.TrimStart('v', 'V'), root.GetProperty("html_url").GetString() ?? "", assetUrl, size, digest);
     }
 
-    private static async Task InstallAsync(Release release)
+    private async Task InstallAsync(Release release)
     {
         var exe = Environment.ProcessPath!;
         var downloaded = exe + ".new";
         var old = exe + ".old";
+        var title = $"Updating to {release.Name}";
 
+        ReportDownload(title, 0, release.Size);
         using (var response = await Http.GetAsync(release.AssetUrl, HttpCompletionOption.ResponseHeadersRead))
         {
             response.EnsureSuccessStatusCode();
+            var total = release.Size > 0 ? release.Size : response.Content.Headers.ContentLength ?? 0;
+            await using var source = await response.Content.ReadAsStreamAsync();
             await using var file = File.Create(downloaded);
-            await response.Content.CopyToAsync(file);
+
+            var buffer = new byte[81920];
+            long received = 0;
+            var lastReport = DateTime.UtcNow;
+            int read;
+            while ((read = await source.ReadAsync(buffer)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, read));
+                received += read;
+                if (DateTime.UtcNow - lastReport < ProgressInterval) continue;
+                lastReport = DateTime.UtcNow;
+                ReportDownload(title, received, total);
+            }
         }
         if (new FileInfo(downloaded).Length != release.Size)
         {
@@ -178,6 +223,7 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
             throw new IOException("The download is corrupted (checksum mismatch).");
         }
 
+        progress.Update(ProgressId, title, "Installing… the app restarts in a moment", null, null, null, 100);
         File.Move(exe, old, overwrite: true);
         try
         {
@@ -225,11 +271,22 @@ public sealed class Updater(Notifier notifier, SettingsStore settings, Action qu
         quit();
     }
 
+    /// <summary>Shows the download on the island: a bar with "12.3 / 28.8 MB".</summary>
+    private void ReportDownload(string title, long received, long total)
+    {
+        const double mb = 1024 * 1024;
+        var body = total > 0 ? $"{received / mb:0.0} / {total / mb:0.0} MB" : $"{received / mb:0.0} MB";
+        // Hold back 100% until the file is verified and swapped in; 100 turns the bar green.
+        var percent = total > 0 ? Math.Min(99.0, received * 100.0 / total) : 0;
+        progress.Update(ProgressId, title, body, "", "#FFD97757", null, percent);
+    }
+
     private void Notify(string title, string body, string icon, string accent, double seconds = 5) =>
         notifier.Show(title, body, icon, Notifier.Brush(accent), seconds);
 
     /// <summary>"0.2" and "0.2.0.0" compare equal.</summary>
     private static Version Normalize(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0));
 
-    private sealed record Release(Version Version, string PageUrl, string? AssetUrl, long Size, string? Digest);
+    /// <param name="Name">The tag without the "v", e.g. "0.4.1-F".</param>
+    private sealed record Release(Version Version, string Name, string PageUrl, string? AssetUrl, long Size, string? Digest);
 }

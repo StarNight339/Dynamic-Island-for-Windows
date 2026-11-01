@@ -12,7 +12,7 @@ public sealed class AboutSection(SettingsStore store, Updater updater) : Setting
 
     public override IEnumerable<SettingItem> Build()
     {
-        yield return new InfoItem { Label = "Version", Get = () => Updater.Current.ToString(3) };
+        yield return new InfoItem { Label = "Version", Get = () => Updater.DisplayVersion };
         yield return Toggle("Update automatically",
             Updater.CanSelfUpdate
                 ? "Install new versions from GitHub and restart the app"

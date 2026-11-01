@@ -14,7 +14,7 @@ public partial class ClaudeView : IslandView
 
     public Phase Current { get; private set; }
 
-    public override Size ExpandedSize => new(400, 128);
+    public override Size ExpandedSize => new(400, Current == Phase.Working ? 142 : 128);
     protected override FrameworkElement CompactPart => CompactRoot;
     protected override FrameworkElement ExpandedPart => ExpandedRoot;
 
@@ -52,6 +52,7 @@ public partial class ClaudeView : IslandView
         Spin.BeginAnimation(RotateTransform.AngleProperty, spin);
         CompactSpin.BeginAnimation(RotateTransform.AngleProperty, spin);
 
+        WorkingBar.Visibility = phase == Phase.Working ? Visibility.Visible : Visibility.Collapsed;
         if (phase == Phase.Working) _tick.Start(); else _tick.Stop();
         RenderElapsed();
     }

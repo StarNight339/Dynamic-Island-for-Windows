@@ -98,6 +98,28 @@ internal static partial class NativeMethods
                DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) == 0;
     }
 
+    private static readonly Guid FolderDownloads = new("374DE290-123F-4565-9164-39C4925E467B");
+
+    [LibraryImport("shell32.dll")]
+    private static partial int SHGetKnownFolderPath(in Guid id, uint flags, IntPtr token, out IntPtr path);
+
+    /// <summary>The user's Downloads folder (follows a moved folder); falls back to %USERPROFILE%\Downloads.</summary>
+    public static string GetDownloadsFolder()
+    {
+        if (SHGetKnownFolderPath(FolderDownloads, 0, IntPtr.Zero, out var ptr) == 0)
+        {
+            try
+            {
+                if (Marshal.PtrToStringUni(ptr) is { Length: > 0 } path) return path;
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(ptr);
+            }
+        }
+        return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    }
+
     /// <summary>Tool window (no taskbar / alt-tab entry) that never takes keyboard focus.</summary>
     public static void MakeOverlay(IntPtr hwnd)
     {

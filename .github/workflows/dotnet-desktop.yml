@@ -1,5 +1,11 @@
-# Builds on every push / PR. When a GitHub release is published (or on manual run with a tag),
-# publishes two single-file builds and attaches them to that release:
+# Builds and tests on every push / PR.
+#
+# Every push to main is also released automatically as v0.X.Y-Z (see .github/scripts/next-version.ps1):
+#   X = version, Y = patch (bumped on every release, rolls over into X after 9), Z = change type letter.
+# Put "[skip release]" in the commit message to only build.
+#
+# A release published by hand (or a manual run with a tag) gets the builds attached too.
+# Each release carries two single-file builds:
 #   DynamicIsland-<tag>-win-x64.exe             small, needs the .NET 10 Desktop Runtime
 #   DynamicIsland-<tag>-win-x64-standalone.exe  large, runtime included, runs anywhere
 
@@ -43,36 +49,58 @@ jobs:
 
   release:
     needs: build
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'release' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip release]'))
     runs-on: windows-latest
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    # Two pushes close together must not both take the same version number.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+          fetch-depth: 0 # the version script needs every tag
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      # v1.2.3 -> 1.2.3, baked into the exe so the auto-updater can compare it with the latest release.
-      # Tags that aren't versions keep the <Version> from the csproj.
-      - name: Version from tag
+      # TAG: the release tag. VERSION: numeric 0.X.Y baked into the exe for the updater to compare.
+      # INFO: what the app shows the user, e.g. 0.4.1-F. Tags that aren't versions keep the csproj <Version>.
+      - name: Work out version
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
-          $v = $env:TAG -replace '^[vV]', ''
-          if ($v -match '^\d+\.\d+(\.\d+)?$') { "VERSION_ARG=-p:Version=$v" >> $env:GITHUB_ENV }
+          if ($env:GITHUB_EVENT_NAME -eq 'push') {
+            $tag = ./.github/scripts/next-version.ps1 | Select-Object -Last 1
+          } else {
+            $tag = $env:EVENT_TAG
+          }
+          $info = $tag -replace '^[vV]', ''
+          $core = $info.Split('-')[0]
+          "TAG=$tag" >> $env:GITHUB_ENV
+          if ($core -match '^\d+\.\d+(\.\d+)?$') {
+            "VERSION=$core" >> $env:GITHUB_ENV
+            "INFO=$info" >> $env:GITHUB_ENV
+          }
+          Write-Host "Releasing $tag"
 
       # Note: use --no-self-contained; on the .NET 10 CLI "--self-contained false" is read as true.
       - name: Publish (needs .NET runtime)
         run: |
-          dotnet publish $env:PROJECT -c Release -r $env:RID --no-self-contained $env:VERSION_ARG `
+          $extra = @()
+          if ($env:VERSION) { $extra += "-p:Version=$env:VERSION"; $extra += "-p:InformationalVersion=$env:INFO" }
+          dotnet publish $env:PROJECT -c Release -r $env:RID --no-self-contained @extra `
             -p:PublishSingleFile=true -p:DebugType=none -o out/small
           Remove-Item bin, obj -Recurse -Force
 
       - name: Publish (standalone)
         run: |
-          dotnet publish $env:PROJECT -c Release -r $env:RID --self-contained $env:VERSION_ARG `
+          $extra = @()
+          if ($env:VERSION) { $extra += "-p:Version=$env:VERSION"; $extra += "-p:InformationalVersion=$env:INFO" }
+          dotnet publish $env:PROJECT -c Release -r $env:RID --self-contained @extra `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true -p:DebugType=none -o out/full
 
@@ -83,7 +111,25 @@ jobs:
           Move-Item out/full/DynamicIsland.exe "dist/DynamicIsland-$env:TAG-$env:RID-standalone.exe"
           Get-ChildItem dist | Format-Table Name, Length
 
+      - name: Create release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: Dynamic ${{ env.INFO }}
+          files: dist/*.exe
+          make_latest: true
+          generate_release_notes: true
+          body: |
+            ### Download
+            | File | Size | Notes |
+            |---|---|---|
+            | `DynamicIsland-${{ env.TAG }}-win-x64.exe` | ~30 MB | Needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) |
+            | `DynamicIsland-${{ env.TAG }}-win-x64-standalone.exe` | ~80 MB | Runtime included, just run it |
+
       - name: Attach to release
+        if: github.event_name != 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}

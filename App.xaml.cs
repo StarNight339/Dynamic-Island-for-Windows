@@ -21,6 +21,7 @@ public partial class App : Application
     private Forms.NotifyIcon? _tray;
     private Drawing.Icon? _icon;
     private VolumeProvider? _volume;
+    private DownloadProvider? _downloads;
     private HttpApiProvider? _api;
     private SettingsStore? _settings;
     private SettingsRegistry? _registry;
@@ -43,13 +44,15 @@ public partial class App : Application
         var settings = _settings = new SettingsStore(SettingsStore.DefaultPath);
         var activities = new ActivityManager();
         var notifier = new Notifier(activities);
-        var updater = new Updater(notifier, settings, Quit);
+        var progress = new ProgressProvider(activities);
+        var updater = new Updater(notifier, progress, settings, Quit);
         var clock = new ClockView();
         var window = new IslandWindow(activities, clock, settings);
 
         var timer = new ClockTimerProvider(activities, notifier, clock, settings);
         var claude = new ClaudeProvider(activities, notifier, settings);
         var shelf = new FileShelfProvider(activities, window, settings);
+        var downloads = _downloads = new DownloadProvider(activities, Dispatcher, settings, shelf.Shelf);
 
         // Sidebar order. A new system adds its section here (see README "Adding a settings page").
         _registry = new SettingsRegistry([
@@ -60,6 +63,7 @@ public partial class App : Application
             new VolumeSection(settings),
             new ClaudeSection(settings),
             new FileShelfSection(settings, shelf.Shelf),
+            new DownloadSection(settings, downloads.Folder),
             new ApiSection(settings, notifier),
             new AboutSection(settings, updater),
         ]);
@@ -70,11 +74,12 @@ public partial class App : Application
         CreateTray();
 
         if (e.Args.Contains(Updater.UpdatedArg))
-            notifier.Show($"Updated to {Updater.Current.ToString(3)}", "Dynamic Island is up to date", "",
+            notifier.Show($"Updated to {Updater.DisplayVersion}", "Dynamic Island is up to date", "",
                 Notifier.Brush("AccentGreen"));
         updater.Start();
 
         new BatteryProvider(activities, notifier, clock, Dispatcher, settings).Start();
+        downloads.Start();
         try
         {
             _volume = new VolumeProvider(activities, Dispatcher, settings);
@@ -90,7 +95,7 @@ public partial class App : Application
         {
             try
             {
-                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer, new ProgressProvider(activities));
+                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer, progress);
                 _api.Start();
             }
             catch (HttpListenerException ex)
@@ -226,6 +231,7 @@ public partial class App : Application
         _tray?.Dispose();
         _api?.Dispose();
         _volume?.Dispose();
+        _downloads?.Dispose();
         Shutdown();
     }
 
