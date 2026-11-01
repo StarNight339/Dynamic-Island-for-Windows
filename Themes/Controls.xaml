@@ -205,6 +205,36 @@
         <Setter Property="Padding" Value="0" />
     </Style>
 
+    <!-- One option of a ChoiceItem (theme preset, effect, font); the checked one is filled with the accent blue. -->
+    <Style x:Key="ChoiceChip" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bg" CornerRadius="15" Background="#1FFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#FF0A84FF" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="#FF0A84FF" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Removable value chip (timer presets, battery levels) -->
     <Style x:Key="ValueChip" TargetType="Border">
         <Setter Property="Background" Value="#1FFFFFFF" />

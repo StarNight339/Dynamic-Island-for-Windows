@@ -48,6 +48,7 @@ public partial class App : Application
         var updater = new Updater(notifier, progress, settings, Quit);
         var clock = new ClockView();
         var window = new IslandWindow(activities, clock, settings);
+        _ = new ThemeManager(window, settings); // applies the saved theme now and on every change
 
         var timer = new ClockTimerProvider(activities, notifier, clock, settings);
         var claude = new ClaudeProvider(activities, notifier, settings);
@@ -57,6 +58,7 @@ public partial class App : Application
         // Sidebar order. A new system adds its section here (see README "Adding a settings page").
         _registry = new SettingsRegistry([
             new GeneralSection(settings),
+            new ThemeSection(settings),
             new TimerSection(settings),
             new BatterySection(settings),
             new MediaSection(settings),

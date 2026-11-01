@@ -6,10 +6,10 @@
     <Grid>
         <Grid x:Name="CompactRoot" Margin="14,0,16,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" FontSize="15" Foreground="{StaticResource AccentOrange}" />
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" FontSize="15" Foreground="{DynamicResource AccentOrange}" />
                 <TextBlock x:Name="CompactCount" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock x:Name="CompactName" FontSize="12" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"
+            <TextBlock x:Name="CompactName" FontSize="12" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Right"
                        VerticalAlignment="Center" MaxWidth="170" TextTrimming="CharacterEllipsis" />
         </Grid>
 
@@ -36,15 +36,15 @@
                     <Button Style="{StaticResource ChipButton}" Click="Clear_Click" ToolTip="Remove everything from the shelf (files stay on disk)">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE74D;" FontSize="11" Margin="0,0,5,0"
-                                       Foreground="{StaticResource AccentRed}" />
+                                       Foreground="{DynamicResource AccentRed}" />
                             <TextBlock Text="Clear" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
-                <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" FontSize="14" Foreground="{StaticResource AccentOrange}" />
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" FontSize="14" Foreground="{DynamicResource AccentOrange}" />
                 <TextBlock x:Name="TitleText" Text="Shelf" FontSize="14" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
                 <TextBlock x:Name="StatusText" FontSize="12" Margin="10,0,8,0" VerticalAlignment="Center"
-                           Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                           Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
             </DockPanel>
 
             <Grid Grid.Row="1" Margin="0,6,0,0">
@@ -60,7 +60,7 @@
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" FontSize="22" HorizontalAlignment="Center" />
                             <TextBlock x:Name="DropZoneText" Text="Drop files here" FontSize="13" Margin="0,8,0,0"
-                                       HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}" />
+                                       HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
                         </StackPanel>
                     </Grid>
                 </Border>

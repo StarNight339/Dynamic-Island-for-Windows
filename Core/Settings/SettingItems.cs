@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace DynamicIsland.Core.Settings;
 
@@ -235,4 +236,143 @@ public sealed class CustomItem : SettingItem
     public bool Wide { get; init; }
     public override bool WideEditor => Wide;
     public override FrameworkElement CreateEditor() => Build();
+}
+
+/// <summary>Pick one of a few named options, shown as a row of chips (theme preset, effect, font).</summary>
+public sealed class ChoiceItem : SettingItem
+{
+    public required IReadOnlyList<string> Options { get; init; }
+    public required Func<string> Get { get; init; }
+    public required Action<string> Set { get; init; }
+
+    /// <summary>Also offer a text box for a value that isn't in <see cref="Options"/> (e.g. any installed font).</summary>
+    public bool AllowCustom { get; init; }
+
+    /// <summary>Label shown for an option, e.g. "Default" for an empty font name.</summary>
+    public Func<string, string> Format { get; init; } = v => v;
+
+    public override bool WideEditor => true;
+
+    public override FrameworkElement CreateEditor()
+    {
+        var panel = new WrapPanel();
+        Render(panel);
+        PropertyChanged += (_, _) => Render(panel);
+        return panel;
+    }
+
+    private void Render(WrapPanel panel)
+    {
+        panel.Children.Clear();
+        var current = Get();
+        var group = Guid.NewGuid().ToString("N");
+        foreach (var option in Options)
+        {
+            var chip = new RadioButton
+            {
+                Content = Format(option),
+                GroupName = group,
+                IsChecked = string.Equals(option, current, StringComparison.OrdinalIgnoreCase),
+            };
+            chip.SetResourceReference(FrameworkElement.StyleProperty, "ChoiceChip");
+            chip.Checked += (_, _) =>
+            {
+                if (!string.Equals(Get(), option, StringComparison.OrdinalIgnoreCase)) { Set(option); Refresh(); }
+            };
+            panel.Children.Add(chip);
+        }
+
+        if (!AllowCustom) return;
+        var box = new TextBox
+        {
+            Width = 160,
+            Height = 30,
+            Margin = new Thickness(0, 0, 6, 6),
+            Text = Options.Contains(current, StringComparer.OrdinalIgnoreCase) ? "" : current,
+            ToolTip = "Type a name and press Enter",
+        };
+        box.SetResourceReference(FrameworkElement.StyleProperty, "SettingsTextBox");
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Enter) return;
+            Set(box.Text.Trim());
+            Refresh();
+        };
+        panel.Children.Add(box);
+    }
+}
+
+/// <summary>A colour: a few swatches, a hex box and a preview square.</summary>
+public sealed class ColorItem : SettingItem
+{
+    private static readonly string[] Swatches =
+        ["#000000", "#1C1C1E", "#F2F2F7", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#FF9F0A", "#34C759", "#2EE6D6"];
+
+    public required Func<string> Get { get; init; }
+    public required Action<string> Set { get; init; }
+
+    public override bool WideEditor => true;
+
+    public override FrameworkElement CreateEditor()
+    {
+        var panel = new WrapPanel();
+        Render(panel);
+        PropertyChanged += (_, _) => Render(panel);
+        return panel;
+    }
+
+    private void Render(WrapPanel panel)
+    {
+        panel.Children.Clear();
+        var current = Get();
+
+        foreach (var hex in Swatches)
+        {
+            var color = ThemeManager.ParseColor(hex, Colors.Transparent);
+            var selected = string.Equals(ThemeManager.ToHex(ThemeManager.ParseColor(current, Colors.Transparent)), hex,
+                StringComparison.OrdinalIgnoreCase);
+            var swatch = new Border
+            {
+                Width = 26,
+                Height = 26,
+                CornerRadius = new CornerRadius(13),
+                Margin = new Thickness(0, 2, 6, 8),
+                Background = new SolidColorBrush(color),
+                BorderBrush = selected ? Brushes.White : new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+                BorderThickness = new Thickness(selected ? 2 : 1),
+                Cursor = Cursors.Hand,
+                ToolTip = hex,
+            };
+            swatch.MouseLeftButtonUp += (_, _) => { Set(hex); Refresh(); };
+            panel.Children.Add(swatch);
+        }
+
+        var preview = new Border
+        {
+            Width = 30,
+            Height = 30,
+            CornerRadius = new CornerRadius(6),
+            Margin = new Thickness(8, 0, 6, 6),
+            Background = new SolidColorBrush(ThemeManager.ParseColor(current, Colors.Transparent)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+            BorderThickness = new Thickness(1),
+        };
+        var box = new TextBox { Width = 96, Height = 30, Margin = new Thickness(0, 0, 6, 6), Text = current, ToolTip = "#RRGGBB" };
+        box.SetResourceReference(FrameworkElement.StyleProperty, "SettingsTextBox");
+        void Commit()
+        {
+            var parsed = ThemeManager.ParseColor(box.Text, Colors.Transparent);
+            if (parsed == Colors.Transparent && !box.Text.Trim().Equals("transparent", StringComparison.OrdinalIgnoreCase))
+            {
+                box.Text = Get(); // not a colour: put the old value back
+                return;
+            }
+            Set(ThemeManager.ToHex(parsed));
+            Refresh();
+        }
+        box.KeyDown += (_, e) => { if (e.Key == Key.Enter) Commit(); };
+        box.LostFocus += (_, _) => { if (box.Text.Trim() != Get()) Commit(); };
+        panel.Children.Add(preview);
+        panel.Children.Add(box);
+    }
 }

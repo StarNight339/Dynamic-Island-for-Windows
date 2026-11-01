@@ -4,13 +4,13 @@
                   xmlns:local="clr-namespace:DynamicIsland.Views">
     <Grid>
         <Grid x:Name="CompactRoot" Margin="12,0,14,0">
-            <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" FontSize="16" Foreground="{StaticResource AccentOrange}"
+            <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" FontSize="16" Foreground="{DynamicResource AccentOrange}"
                        HorizontalAlignment="Left" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <ProgressBar x:Name="CompactBar" Style="{StaticResource SlimBar}" Width="60" Margin="0,0,10,0"
-                             Foreground="{StaticResource AccentOrange}" />
+                             Foreground="{DynamicResource AccentOrange}" />
                 <TextBlock x:Name="CompactRemaining" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
-                           Foreground="{StaticResource AccentOrange}" />
+                           Foreground="{DynamicResource AccentOrange}" />
             </StackPanel>
         </Grid>
 
@@ -21,12 +21,12 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Button Style="{StaticResource IslandButton}" Width="44" Height="44" Background="#33FF9F0A"
-                    Foreground="{StaticResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel" Click="Cancel_Click" />
+                    Foreground="{DynamicResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel" Click="Cancel_Click" />
             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Timer" FontSize="12" Foreground="{StaticResource TextSecondary}" />
-                <TextBlock x:Name="Remaining" FontSize="34" FontWeight="Light" Foreground="{StaticResource AccentOrange}" />
+                <TextBlock Text="Timer" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                <TextBlock x:Name="Remaining" FontSize="34" FontWeight="Light" Foreground="{DynamicResource AccentOrange}" />
                 <ProgressBar x:Name="Bar" Style="{StaticResource SlimBar}" Margin="0,4,12,0"
-                             Foreground="{StaticResource AccentOrange}" />
+                             Foreground="{DynamicResource AccentOrange}" />
             </StackPanel>
             <Button Grid.Column="2" Style="{StaticResource ChipButton}" Content="+1 min" Click="AddMinute_Click"
                     VerticalAlignment="Center" />
