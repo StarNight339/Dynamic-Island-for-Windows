@@ -35,7 +35,7 @@
                 </Border>
                 <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
                     <TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold" Text="Not playing" />
-                    <TextBlock x:Name="ArtistText" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+                    <TextBlock x:Name="ArtistText" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
                 </StackPanel>
                 <StackPanel x:Name="ExpandedBars" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Height="20" />
@@ -47,9 +47,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="40" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="PositionText" FontSize="11" Foreground="{StaticResource TextSecondary}" Text="0:00" />
+                <TextBlock x:Name="PositionText" FontSize="11" Foreground="{DynamicResource TextSecondary}" Text="0:00" />
                 <ProgressBar x:Name="Progress" Grid.Column="1" Style="{StaticResource SlimBar}" VerticalAlignment="Center" />
-                <TextBlock x:Name="DurationText" Grid.Column="2" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                <TextBlock x:Name="DurationText" Grid.Column="2" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                            HorizontalAlignment="Right" Text="0:00" />
             </Grid>
 

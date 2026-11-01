@@ -33,7 +33,7 @@
             </Border>
             <StackPanel Grid.Column="1" Margin="14,1,0,0">
                 <emoji:TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                <emoji:TextBlock x:Name="BodyText" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,3,0,0"
+                <emoji:TextBlock x:Name="BodyText" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0"
                                  TextWrapping="Wrap" MaxHeight="54" TextTrimming="CharacterEllipsis" />
             </StackPanel>
         </Grid>

@@ -6,7 +6,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
         ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
-        TextElement.FontFamily="{StaticResource UiFont}" TextElement.Foreground="{StaticResource TextPrimary}">
+        TextElement.FontFamily="{DynamicResource UiFont}" TextElement.Foreground="{DynamicResource TextPrimary}">
     <!-- Fully transparent pixels of a layered window are click-through, so only the black island catches the mouse. -->
     <Grid x:Name="Root">
         <Grid x:Name="Island" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
@@ -16,6 +16,18 @@
               DragLeave="Island_DragLeave" Drop="Island_Drop">
             <!-- The black capsule: its size and corner radius are driven by springs. -->
             <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top" />
+            <!-- Theme overlays, sized with the capsule every frame: "mossy" grain and the glass sheen. -->
+            <Border x:Name="PillTexture" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Visibility="Collapsed" />
+            <Border x:Name="PillSheen" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Visibility="Collapsed" BorderThickness="1" BorderBrush="#38FFFFFF">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#2EFFFFFF" Offset="0" />
+                        <GradientStop Color="#00FFFFFF" Offset="0.55" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
 
             <!-- Content is laid out at its final size and revealed by clipping to the capsule. -->
             <ContentControl x:Name="Host" HorizontalAlignment="Center" VerticalAlignment="Top" Focusable="False"

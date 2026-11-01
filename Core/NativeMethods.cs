@@ -120,6 +120,79 @@ internal static partial class NativeMethods
         return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
     }
 
+    // ---- backdrop blur (theme "Acrylic") ----
+
+    private const int WCA_ACCENT_POLICY = 19;
+    private const int ACCENT_DISABLED = 0;
+    private const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ACCENT_POLICY
+    {
+        public int AccentState;
+        public int AccentFlags;
+        public uint GradientColor; // ABGR
+        public int AnimationId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WINDOWCOMPOSITIONATTRIBDATA
+    {
+        public int Attribute;
+        public IntPtr Data;
+        public int SizeOfData;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WINDOWCOMPOSITIONATTRIBDATA data);
+
+    [LibraryImport("user32.dll")]
+    private static partial int SetWindowRgn(IntPtr hwnd, IntPtr region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
+
+    [LibraryImport("gdi32.dll")]
+    private static partial IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DeleteObject(IntPtr handle);
+
+    /// <summary>Blurs what's behind the window (undocumented but long-stable API). Returns false if Windows refused.</summary>
+    public static bool SetAcrylic(IntPtr hwnd, byte a, byte r, byte g, byte b) =>
+        SetAccent(hwnd, ACCENT_ENABLE_ACRYLICBLURBEHIND, (uint)(a << 24 | b << 16 | g << 8 | r));
+
+    public static void ClearAcrylic(IntPtr hwnd) => SetAccent(hwnd, ACCENT_DISABLED, 0);
+
+    private static bool SetAccent(IntPtr hwnd, int state, uint color)
+    {
+        var policy = new ACCENT_POLICY { AccentState = state, AccentFlags = 2, GradientColor = color };
+        var size = Marshal.SizeOf<ACCENT_POLICY>();
+        var ptr = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(policy, ptr, false);
+            var data = new WINDOWCOMPOSITIONATTRIBDATA { Attribute = WCA_ACCENT_POLICY, Data = ptr, SizeOfData = size };
+            return SetWindowCompositionAttribute(hwnd, ref data) != 0;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(ptr);
+        }
+    }
+
+    /// <summary>Clips the window to a rounded rectangle (device pixels). Windows owns the region afterwards.</summary>
+    public static void SetRoundWindowRegion(IntPtr hwnd, int left, int top, int right, int bottom, int diameter)
+    {
+        var region = CreateRoundRectRgn(left, top, right + 1, bottom + 1, diameter, diameter);
+        if (region == IntPtr.Zero) return;
+        if (SetWindowRgn(hwnd, region, true) == 0) DeleteObject(region); // only freed by us when Windows didn't take it
+    }
+
+    public static void ClearWindowRegion(IntPtr hwnd) => SetWindowRgn(hwnd, IntPtr.Zero, true);
+
     /// <summary>Tool window (no taskbar / alt-tab entry) that never takes keyboard focus.</summary>
     public static void MakeOverlay(IntPtr hwnd)
     {

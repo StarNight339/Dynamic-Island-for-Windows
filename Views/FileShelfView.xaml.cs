@@ -87,7 +87,8 @@ public partial class FileShelfView : IslandView
     {
         var show = _dropHint || _items.Count == 0;
         DropZone.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        DropZone.Background = new SolidColorBrush(Color.FromArgb((byte)(_items.Count == 0 && !_dropHint ? 0x14 : 0xD8), 0x1C, 0x1C, 0x1E));
+        var baseColor = (TryFindResource("SurfaceBase") as SolidColorBrush)?.Color ?? Color.FromRgb(0x1C, 0x1C, 0x1E);
+        DropZone.Background = new SolidColorBrush(Color.FromArgb((byte)(_items.Count == 0 && !_dropHint ? 0x14 : 0xD8), baseColor.R, baseColor.G, baseColor.B));
         DropZoneText.Text = _dropHint ? "Drop to add to the shelf" : "Drop files here";
     }
 
@@ -146,29 +147,27 @@ public partial class FileShelfView : IslandView
         layout.Children.Add(name);
         layout.Children.Add(actions);
 
-        var idle = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
-        var hot = new SolidColorBrush(Color.FromArgb(0x2C, 0xFF, 0xFF, 0xFF));
         var tile = new Border
         {
             Width = TileWidth,
             Margin = new Thickness(0, 0, 8, 0),
             Padding = new Thickness(2, 8, 2, 6),
             CornerRadius = new CornerRadius(14),
-            Background = idle,
             Cursor = Cursors.Hand,
             ToolTip = path,
             Child = layout,
         };
+        tile.SetResourceReference(Border.BackgroundProperty, "SurfaceSubtle");
         ToolTipService.SetInitialShowDelay(tile, 700);
 
         tile.MouseEnter += (_, _) =>
         {
-            tile.Background = hot;
+            tile.SetResourceReference(Border.BackgroundProperty, "SurfaceHover");
             actions.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(120)));
         };
         tile.MouseLeave += (_, _) =>
         {
-            tile.Background = idle;
+            tile.SetResourceReference(Border.BackgroundProperty, "SurfaceSubtle");
             actions.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(160)));
             _pressAt = null;
         };
@@ -198,7 +197,7 @@ public partial class FileShelfView : IslandView
                 return;
             }
             DragDrop.DoDragDrop(tile, FileActions.CreateDragData([path]), DragDropEffects.Copy | DragDropEffects.Link);
-            tile.Background = idle;
+            tile.SetResourceReference(Border.BackgroundProperty, "SurfaceSubtle");
             actions.Opacity = 0;
             DragOutFinished?.Invoke();
         };

@@ -65,11 +65,11 @@ public partial class QuickPanelView : IslandView
             Margin = new Thickness(3),
             Padding = new Thickness(12, 0, 10, 0),
             CornerRadius = new CornerRadius(16),
-            Background = new SolidColorBrush(Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF)),
             Cursor = System.Windows.Input.Cursors.Hand,
             ToolTip = item.Description,
             Child = row,
         };
+        tile.SetResourceReference(Border.BackgroundProperty, "SurfaceTile");
         // The whole tile toggles; the switch itself handles its own clicks.
         tile.MouseLeftButtonUp += (_, _) => item.Value = !item.Value;
         return tile;

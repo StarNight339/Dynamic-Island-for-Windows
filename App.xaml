@@ -18,6 +18,11 @@
             <SolidColorBrush x:Key="AccentOrange" Color="#FFFF9F0A" />
             <SolidColorBrush x:Key="AccentRed" Color="#FFFF453A" />
             <SolidColorBrush x:Key="AccentClaude" Color="#FFD97757" />
+            <!-- Island surfaces; ThemeManager overrides these (and the text brushes) on the island window. -->
+            <SolidColorBrush x:Key="SurfaceSubtle" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="SurfaceTile" Color="#1CFFFFFF" />
+            <SolidColorBrush x:Key="SurfaceHover" Color="#2CFFFFFF" />
+            <SolidColorBrush x:Key="SurfaceBase" Color="#FF1C1C1E" />
 
             <!-- Font and colour are inherited from IslandWindow; setting them here would override button content (icon glyphs). -->
             <Style TargetType="TextBlock">
@@ -25,8 +30,8 @@
             </Style>
 
             <Style x:Key="Icon" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                <Setter Property="FontFamily" Value="{DynamicResource IconFont}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="TextTrimming" Value="None" />
             </Style>
@@ -34,8 +39,8 @@
             <!-- Round icon button used for media / timer controls -->
             <Style x:Key="IslandButton" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-                <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="FontFamily" Value="{DynamicResource IconFont}" />
                 <Setter Property="FontSize" Value="18" />
                 <Setter Property="Width" Value="40" />
                 <Setter Property="Height" Value="40" />
@@ -67,8 +72,8 @@
 
             <!-- Pill-shaped text button (timer presets etc.) -->
             <Style x:Key="ChipButton" TargetType="Button">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-                <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Height" Value="26" />
                 <Setter Property="Padding" Value="10,0" />
@@ -96,12 +101,12 @@
                 <Setter Property="Height" Value="5" />
                 <Setter Property="Minimum" Value="0" />
                 <Setter Property="Maximum" Value="1" />
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ProgressBar">
                             <Grid>
-                                <Border x:Name="PART_Track" Background="{StaticResource Track}" CornerRadius="2.5" />
+                                <Border x:Name="PART_Track" Background="{DynamicResource Track}" CornerRadius="2.5" />
                                 <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}"
                                         CornerRadius="2.5" HorizontalAlignment="Left" />
                             </Grid>

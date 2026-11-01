@@ -15,18 +15,18 @@
             <DockPanel Height="34">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button x:Name="ShelfButton" Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15"
-                            Foreground="{StaticResource AccentOrange}" Content="&#xE8B7;" ToolTip="File shelf"
+                            Foreground="{DynamicResource AccentOrange}" Content="&#xE8B7;" ToolTip="File shelf"
                             Click="Shelf_Click" />
                     <Button x:Name="CancelTimerButton" Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="13"
-                            Foreground="{StaticResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel timer"
+                            Foreground="{DynamicResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel timer"
                             Click="CancelTimer_Click" />
                     <Button Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15" Content="&#xE713;"
                             ToolTip="Settings" Click="Settings_Click" />
                     <Button Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15" Content="&#xE7E8;"
-                            Foreground="{StaticResource AccentRed}" ToolTip="Exit" Click="Exit_Click" />
+                            Foreground="{DynamicResource AccentRed}" ToolTip="Exit" Click="Exit_Click" />
                 </StackPanel>
                 <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" FontSize="14" Margin="0,0,6,0"
-                           Foreground="{StaticResource AccentOrange}" />
+                           Foreground="{DynamicResource AccentOrange}" />
                 <StackPanel x:Name="TimerChips" Orientation="Horizontal" VerticalAlignment="Center" />
             </DockPanel>
 

@@ -47,6 +47,26 @@ public abstract class SettingsSection<T>(SettingsStore store) : ISettingsSection
         UseTextBox = textBox,
     };
 
+    protected ChoiceItem Choice(string label, string? description, IReadOnlyList<string> options, Func<T, string> get,
+        Action<T, string> set, bool allowCustom = false, Func<string, string>? format = null) => new()
+    {
+        Label = label,
+        Description = description,
+        Options = options,
+        AllowCustom = allowCustom,
+        Format = format ?? (v => v),
+        Get = () => get(Model),
+        Set = v => { set(Model, v); store.Save<T>(); },
+    };
+
+    protected ColorItem Color(string label, string? description, Func<T, string> get, Action<T, string> set) => new()
+    {
+        Label = label,
+        Description = description,
+        Get = () => get(Model),
+        Set = v => { set(Model, v); store.Save<T>(); },
+    };
+
     protected NumberListItem NumberList(string label, string? description, Func<T, List<int>> get,
         int min, int max, Func<int, string> format) => new()
     {
