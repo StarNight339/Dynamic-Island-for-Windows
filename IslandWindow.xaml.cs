@@ -218,6 +218,8 @@ public partial class IslandWindow : Window
             overlay.CornerRadius = new CornerRadius(radius);
         }
         if (_effect == ThemeEffects.Acrylic && !_fullyHidden) ClipBackdrop(width, height, radius);
+        // Hidden (or sliding) and the capsule changed size, e.g. a normal notification grew it: keep it fully tucked away.
+        if (_slide.Value != 0 && !_slideRunning) ApplySlide();
 
         // Host sits centred above the pill at its final size; clip it to the pill's current shape.
         var hostWidth = double.IsNaN(Host.Width) ? width : Host.Width;
@@ -408,6 +410,7 @@ public partial class IslandWindow : Window
         IslandSquash.ScaleX = 1 - 0.25 * p;
         IslandSquash.ScaleY = 1 - 0.1 * p;
 
+        if (_fullyHidden) return;
         if (_hidden && _slide.IsSettled && _slide.Value >= 100)
         {
             // Fully tucked away: drop the blur, which Windows draws and which the slide can't move off-screen by itself.
