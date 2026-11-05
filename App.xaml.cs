@@ -73,7 +73,7 @@ public partial class App : Application
         SetUpQuickPanel(window, activities, timer, shelf);
         window.Show();
 
-        CreateTray();
+        CreateTray(window);
 
         if (e.Args.Contains(Updater.UpdatedArg))
             notifier.Show($"Updated to {Updater.DisplayVersion}", "Dynamic Island is up to date", "",
@@ -97,7 +97,8 @@ public partial class App : Application
         {
             try
             {
-                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer, progress);
+                _api = new HttpApiProvider(api.Port, Dispatcher, notifier, claude, timer, progress,
+                    hidden => window.UserHidden = hidden ?? !window.UserHidden);
                 _api.Start();
             }
             catch (HttpListenerException ex)
@@ -158,6 +159,11 @@ public partial class App : Application
             Close();
             shelf.Open();
         };
+        view.HideRequested += () =>
+        {
+            Close();
+            window.UserHidden = true;
+        };
         view.ExitRequested += Quit;
     }
 
@@ -173,10 +179,12 @@ public partial class App : Application
         _settingsWindow.Activate();
     }
 
-    private void CreateTray()
+    private void CreateTray(IslandWindow window)
     {
         _icon = CreateTrayIcon();
         var menu = new Forms.ContextMenuStrip();
+        var hide = menu.Items.Add("Hide island", null, (_, _) => window.ToggleHidden());
+        menu.Opening += (_, _) => hide.Text = window.UserHidden ? "Show island" : "Hide island";
         menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Quit());

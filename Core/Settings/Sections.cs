@@ -6,6 +6,12 @@ public sealed class GeneralSettings : ISettingsModel
 {
     public static string SectionId => "general";
     public bool HideInFullscreen { get; set; } = true;
+
+    /// <summary>Hidden by the user (tray, quick panel, hotkey or API). Important notifications still show.</summary>
+    public bool Hidden { get; set; }
+
+    /// <summary>Ctrl+Alt+H hides / shows the island from any app.</summary>
+    public bool HideHotkey { get; set; } = true;
 }
 
 public sealed class TimerSettings : ISettingsModel

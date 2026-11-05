@@ -29,9 +29,9 @@ public sealed class ThemeManager
         {
             if (id == ThemeSettings.SectionId) Apply();
         };
-        window.FullscreenHiddenChanged += hidden =>
+        window.HiddenChanged += hidden =>
         {
-            // Nobody sees the colours while a game or video covers the screen; don't spend frames on them.
+            // Nobody sees the colours while the island is hidden; don't spend frames on them.
             foreach (var clock in _clocks)
             {
                 if (hidden) clock.Controller?.Pause();

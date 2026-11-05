@@ -20,6 +20,8 @@
                     <Button x:Name="CancelTimerButton" Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="13"
                             Foreground="{DynamicResource AccentOrange}" Content="&#xE711;" ToolTip="Cancel timer"
                             Click="CancelTimer_Click" />
+                    <Button Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15" Content="&#xED1A;"
+                            ToolTip="Hide island (Ctrl+Alt+H) — important notifications still show" Click="Hide_Click" />
                     <Button Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15" Content="&#xE713;"
                             ToolTip="Settings" Click="Settings_Click" />
                     <Button Style="{StaticResource IslandButton}" Width="32" Height="32" FontSize="15" Content="&#xE7E8;"

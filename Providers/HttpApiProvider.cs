@@ -10,10 +10,13 @@ namespace DynamicIsland.Providers;
 /// <summary>
 /// Local HTTP API so scripts / AI tools can push things onto the island. Bound to localhost only.
 ///   GET  /         health check
-///   POST /notify   {"title", "body"?, "icon"?, "image"?, "color"?, "duration"?}
+///   POST /notify   {"title", "body"?, "icon"?, "image"?, "color"?, "duration"?, "priority"?, "important"?}
+///                  priority "high" / "urgent" / "critical" (or a number ≥ 2) or important:true shows it even while
+///                  the island is hidden
 ///                  icon  = Fluent glyph ("\uE73E") or emoji ("🎉"); image = http(s) URL, file path or data: URI
 ///   POST /claude   Claude Code hook JSON as-is, or {"event": "working|waiting|done|idle", "message"?, "project"?}
 ///   POST /timer    {"seconds"}  (0 cancels)
+///   POST /visibility {"hidden"?}  true hides the island, false shows it, omitted toggles
 ///   POST /progress {"id"?, "progress" (0-100), "title"?, "body"?, "icon"?, "image"?, "color"?, "dismiss"?}
 ///                  same id updates the bar in place; omitted fields keep their value; 100 finishes it
 /// </summary>
@@ -23,7 +26,8 @@ public sealed class HttpApiProvider(
     Notifier notifier,
     ClaudeProvider claude,
     ClockTimerProvider timer,
-    ProgressProvider progress) : IDisposable
+    ProgressProvider progress,
+    Action<bool?> setHidden) : IDisposable
 {
     /// <summary>Room for a 5 MB image sent as a base64 data: URI (~6.7 MB) plus the rest of the JSON.</summary>
     private const int MaxBodyBytes = 8 * 1024 * 1024;
@@ -93,6 +97,7 @@ public sealed class HttpApiProvider(
                 "/claude" => ClaudeAction(json),
                 "/timer" => TimerAction(json),
                 "/progress" => await ProgressActionAsync(json),
+                "/visibility" => VisibilityAction(json),
                 _ => null,
             };
             if (action is null)
@@ -121,8 +126,27 @@ public sealed class HttpApiProvider(
         var icon = Str(json, "icon") ?? "\uEA8F";
         var color = Str(json, "color");
         var seconds = Num(json, "duration") ?? 5;
+        var important = IsImportant(json);
         var image = await ImageLoader.LoadAsync(Str(json, "image"));
-        return () => notifier.Show(title, body, icon, Notifier.ParseBrush(color, Notifier.Brush("AccentClaude")), seconds, image);
+        return () => notifier.Show(title, body, icon, Notifier.ParseBrush(color, Notifier.Brush("AccentClaude")), seconds, image,
+            important);
+    }
+
+    /// <summary>"priority": "high" / "urgent" / "critical" (or a number ≥ 2), or "important": true.</summary>
+    internal static bool IsImportant(JsonElement json)
+    {
+        if (Bool(json, "important")) return true;
+        if (Str(json, "priority")?.Trim().ToLowerInvariant() is "high" or "urgent" or "critical") return true;
+        return Num(json, "priority") >= 2;
+    }
+
+    private Action VisibilityAction(JsonElement json)
+    {
+        bool? hidden = json.ValueKind == JsonValueKind.Object && json.TryGetProperty("hidden", out var v)
+            && v.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? v.GetBoolean()
+            : null;
+        return () => setHidden(hidden);
     }
 
     private Action ClaudeAction(JsonElement json)

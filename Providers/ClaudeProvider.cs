@@ -92,7 +92,7 @@ public sealed class ClaudeProvider
                     _activities.Extend(key, null); // waiting on the user can take hours; keep it until they answer
                 }
                 _notifier.Show("Claude needs you", Join(message ?? "Waiting for your input", project), "\uE7BA",
-                    Notifier.Brush("AccentClaude"), 8);
+                    Notifier.Brush("AccentClaude"), 8, important: true);
                 break;
             }
 

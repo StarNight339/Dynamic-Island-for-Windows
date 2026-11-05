@@ -19,6 +19,11 @@ progress bar มีให้ในหลายที่: การอัปเ�
 เอาเมาส์ชี้ = ขยาย, คลิกขวา = Quick Panel (ตั้งเวลา, เปิด/ปิดแต่ละระบบ, ⚙ Settings, ออก), คลิกไอคอนใน tray = เปิดหน้าต่าง Settings
 island จะซ่อนตัวเองเมื่อมีแอปเต็มจอ (เกม, วิดีโอ)
 
+ซ่อน/แสดง island ได้เอง: คลิกขวาที่ tray → "Hide island" / "Show island", ปุ่มซ่อนใน Quick Panel, คีย์ลัด **Ctrl+Alt+H**
+(ปิดได้ใน Settings → General) หรือ `POST /visibility` สถานะซ่อนจะจำไว้แม้ปิดเปิดแอปใหม่
+ตอนซ่อนอยู่ (ทั้งซ่อนเองและซ่อนเพราะเต็มจอ) แจ้งเตือนสำคัญจะยังโผล่ขึ้นมา แล้วซ่อนกลับเมื่อหมดเวลา ได้แก่
+Claude ต้องการให้ตอบ (Notification / PermissionRequest) และ `POST /notify` ที่ส่ง `"priority":"high"` (หรือ `urgent` / `critical` / ตัวเลข ≥ 2) หรือ `"important":true`
+
 ## Download
 
 โหลดได้จากหน้า [Releases](https://github.com/StarNight339/Dynamic-Island-for-Windows/releases) มี 2 แบบ
@@ -89,6 +94,12 @@ curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"tit
 
 # รูปภาพแทน icon: URL, path ในเครื่อง หรือ data:image/png;base64,... (ไม่เกิน 5 MB, PNG/JPG/GIF/BMP/ICO; GIF หลายเฟรมจะเล่นวนเป็นภาพเคลื่อนไหว)
 curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"GitHub\",\"body\":\"New PR\",\"image\":\"https://github.com/fluidicon.png\"}'
+
+# แจ้งเตือนสำคัญ: โผล่ขึ้นมาแม้ island ถูกซ่อนอยู่ (priority = high | urgent | critical หรือ important = true)
+curl.exe -s localhost:5179/notify -H "Content-Type: application/json" -d '{\"title\":\"Deploy failed\",\"body\":\"prod rolled back\",\"color\":\"#FF3B30\",\"priority\":\"high\"}'
+
+# ซ่อน / แสดง island: hidden = true | false, ไม่ส่ง = สลับ
+curl.exe -s localhost:5179/visibility -H "Content-Type: application/json" -d '{\"hidden\":true}'
 
 # แถบความคืบหน้า: progress = 0-100, ส่ง id เดิมซ้ำเพื่ออัปเดต (ฟิลด์ที่ไม่ส่งจะคงค่าเดิม)
 # ถึง 100 จะเป็นสีเขียวแล้วหายไปใน ~3 วินาที, ถ้าไม่มีอัปเดตเกิน 10 นาทีจะหายเอง

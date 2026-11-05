@@ -32,7 +32,12 @@ public partial class IslandWindow : Window
 
     private IslandView? _shown;
     private bool _hover;
-    private bool _hiddenForFullscreen;
+    private const int HideHotkeyId = 0x4449; // "DI"
+    private const uint VK_H = 0x48;
+
+    private bool _fullscreen;
+    private bool _hidden;
+    private bool _hotkeyRegistered;
     private IntPtr _hwnd;
 
     /// <summary>Right-click on the island.</summary>
@@ -47,8 +52,23 @@ public partial class IslandWindow : Window
     /// <summary>Files from another app were dropped on the island.</summary>
     public event Action<string[]>? FilesDropped;
 
-    /// <summary>The island was hidden for (true) or shown again after (false) a fullscreen app.</summary>
-    public event Action<bool>? FullscreenHiddenChanged;
+    /// <summary>The island was hidden (true) or shown again (false), by the user or for a fullscreen app.</summary>
+    public event Action<bool>? HiddenChanged;
+
+    /// <summary>Whether the user hid the island (tray, quick panel, hotkey, API). Important notifications still show.</summary>
+    public bool UserHidden
+    {
+        get => _settings.Get<GeneralSettings>().Hidden;
+        set
+        {
+            var general = _settings.Get<GeneralSettings>();
+            if (general.Hidden == value) return;
+            general.Hidden = value;
+            _settings.Save<GeneralSettings>(); // Changed → UpdateVisibility
+        }
+    }
+
+    public void ToggleHidden() => UserHidden = !UserHidden;
 
     /// <summary>Whether the island takes dropped files (the file shelf is on).</summary>
     public bool AcceptsFiles { get; set; }
@@ -72,7 +92,47 @@ public partial class IslandWindow : Window
         _dragWatch.Tick += (_, _) => CheckCursorAfterDrag();
 
         SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.InvokeAsync(PositionWindow);
+        _settings.Changed += id =>
+        {
+            if (id != GeneralSettings.SectionId) return;
+            UpdateHotkey();
+            UpdateVisibility();
+        };
         Render();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_hotkeyRegistered) NativeMethods.UnregisterHotKey(_hwnd, HideHotkeyId);
+        base.OnClosed(e);
+    }
+
+    private void UpdateHotkey()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        var want = _settings.Get<GeneralSettings>().HideHotkey;
+        if (want == _hotkeyRegistered) return;
+        if (want)
+        {
+            // Fails if another app already owns Ctrl+Alt+H; the tray / quick panel / API still work.
+            _hotkeyRegistered = NativeMethods.RegisterHotKey(_hwnd, HideHotkeyId,
+                NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, VK_H);
+        }
+        else
+        {
+            NativeMethods.UnregisterHotKey(_hwnd, HideHotkeyId);
+            _hotkeyRegistered = false;
+        }
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HideHotkeyId)
+        {
+            ToggleHidden();
+            handled = true;
+        }
+        return IntPtr.Zero;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -80,8 +140,11 @@ public partial class IslandWindow : Window
         base.OnSourceInitialized(e);
         _hwnd = new WindowInteropHelper(this).Handle;
         NativeMethods.MakeOverlay(_hwnd);
+        HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
+        UpdateHotkey();
         ApplyBackdrop();
         PositionWindow();
+        UpdateVisibility(animate: false); // start hidden straight away if the user left it hidden
         _housekeeping.Start();
     }
 
@@ -118,6 +181,7 @@ public partial class IslandWindow : Window
         _spring.AnimateTo(size.Width, size.Height, expanded ? _expandedRadius : size.Height / 2);
 
         if (layoutChanged) FadeInContent(scaleFrom: swapped ? 0.9 : 0.96);
+        UpdateVisibility(); // an important notification breaks through a hide; the island hides again once it's gone
     }
 
     private void FadeInContent(double scaleFrom)
@@ -147,7 +211,7 @@ public partial class IslandWindow : Window
             overlay.Height = height;
             overlay.CornerRadius = new CornerRadius(radius);
         }
-        if (_effect == ThemeEffects.Acrylic) ClipBackdrop(width, height, radius);
+        if (_effect == ThemeEffects.Acrylic && !_hidden) ClipBackdrop(width, height, radius);
 
         // Host sits centred above the pill at its final size; clip it to the pill's current shape.
         var hostWidth = double.IsNaN(Host.Width) ? width : Host.Width;
@@ -189,7 +253,7 @@ public partial class IslandWindow : Window
     private void ApplyBackdrop()
     {
         if (_hwnd == IntPtr.Zero) return;
-        if (_effect == ThemeEffects.Acrylic)
+        if (_effect == ThemeEffects.Acrylic && !_hidden)
         {
             NativeMethods.SetAcrylic(_hwnd, _acrylicTint.A, _acrylicTint.R, _acrylicTint.G, _acrylicTint.B);
         }
@@ -247,29 +311,59 @@ public partial class IslandWindow : Window
     {
         if (_hwnd == IntPtr.Zero) return;
 
-        var fullscreen = _settings.Get<GeneralSettings>().HideInFullscreen && NativeMethods.IsForegroundFullscreen(_hwnd);
-        if (fullscreen != _hiddenForFullscreen)
+        _fullscreen = _settings.Get<GeneralSettings>().HideInFullscreen && NativeMethods.IsForegroundFullscreen(_hwnd);
+        UpdateVisibility();
+        if (!_hidden) NativeMethods.BringToTop(_hwnd);
+    }
+
+    /// <summary>Hides or shows the island when the user's choice, the fullscreen state or the current activity changes.</summary>
+    private void UpdateVisibility(bool animate = true)
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        var hide = IslandVisibility.ShouldHide(UserHidden, _fullscreen, _activities.Current);
+        if (hide == _hidden && animate) return;
+        var changed = hide != _hidden;
+        _hidden = hide;
+
+        // The blur is drawn by Windows, not WPF, so fading Root out wouldn't hide it.
+        if (_effect == ThemeEffects.Acrylic)
         {
-            _hiddenForFullscreen = fullscreen;
-            FullscreenHiddenChanged?.Invoke(fullscreen);
-            // The blur is drawn by Windows, not WPF, so fading Root out wouldn't hide it.
-            if (_effect == ThemeEffects.Acrylic)
+            if (hide)
             {
-                if (fullscreen)
-                {
-                    NativeMethods.ClearAcrylic(_hwnd);
-                    NativeMethods.ClearWindowRegion(_hwnd);
-                }
-                else
-                {
-                    ApplyBackdrop();
-                    ClipBackdrop(Pill.Width, Pill.Height, Pill.CornerRadius.TopLeft);
-                }
+                NativeMethods.ClearAcrylic(_hwnd);
+                NativeMethods.ClearWindowRegion(_hwnd);
             }
-            // Opacity 0 keeps the window alive but makes every pixel click-through.
-            Root.BeginAnimation(OpacityProperty, new DoubleAnimation(fullscreen ? 0 : 1, TimeSpan.FromMilliseconds(200)));
+            else
+            {
+                ApplyBackdrop();
+                ClipBackdrop(Pill.Width, Pill.Height, Pill.CornerRadius.TopLeft);
+            }
         }
-        if (!fullscreen) NativeMethods.BringToTop(_hwnd);
+        // Opacity 0 keeps the window alive but makes every pixel click-through.
+        if (animate)
+            Root.BeginAnimation(OpacityProperty, new DoubleAnimation(hide ? 0 : 1, TimeSpan.FromMilliseconds(200)));
+        else
+        {
+            Root.BeginAnimation(OpacityProperty, null);
+            Root.Opacity = hide ? 0 : 1;
+        }
+
+        if (hide)
+        {
+            // Nobody can reach a hidden island; let go of hover so the quick panel / shelf close.
+            _hoverDelay.Stop();
+            _leaveDelay.Stop();
+            if (_hover)
+            {
+                _hover = false;
+                HoverEnded?.Invoke();
+            }
+        }
+        else
+        {
+            NativeMethods.BringToTop(_hwnd); // break through over a fullscreen app right away
+        }
+        if (changed) HiddenChanged?.Invoke(hide);
     }
 
     private void Island_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)

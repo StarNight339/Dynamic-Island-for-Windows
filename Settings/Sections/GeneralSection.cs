@@ -19,5 +19,9 @@ public sealed class GeneralSection(SettingsStore store) : SettingsSection<Genera
         };
         yield return Toggle("Hide in fullscreen", "Get out of the way of games, videos and presentations",
             m => m.HideInFullscreen, (m, v) => m.HideInFullscreen = v);
+        yield return Toggle("Hide island", "Important notifications, like Claude needing you, still show",
+            m => m.Hidden, (m, v) => m.Hidden = v);
+        yield return Toggle("Hide / show shortcut", "Ctrl+Alt+H hides or shows the island from any app",
+            m => m.HideHotkey, (m, v) => m.HideHotkey = v);
     }
 }
