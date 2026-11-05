@@ -30,6 +30,16 @@ public partial class MediaView : IslandView
         BuildBars(CompactBars, 3, 14);
         BuildBars(ExpandedBars, 4, 20);
         _tick.Tick += (_, _) => RenderTimeline();
+        // Only move while on the island; behind another activity (or gone) the bars would animate unseen forever.
+        Loaded += (_, _) => ApplyMotion();
+        Unloaded += (_, _) => ApplyMotion();
+    }
+
+    private void ApplyMotion()
+    {
+        var on = _playing && IsLoaded;
+        AnimateBars(on);
+        if (on) _tick.Start(); else _tick.Stop();
     }
 
     public void Update(string title, string artist, ImageSource? art, bool playing)
@@ -51,8 +61,7 @@ public partial class MediaView : IslandView
         }
         _playing = playing;
         PlayPauseButton.Content = playing ? "\uE769" : "\uE768";
-        AnimateBars(playing);
-        if (playing) _tick.Start(); else _tick.Stop();
+        ApplyMotion();
         RenderTimeline();
     }
 
@@ -117,6 +126,7 @@ public partial class MediaView : IslandView
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
                 BeginTime = TimeSpan.FromMilliseconds(i * 90),
             };
+            Timeline.SetDesiredFrameRate(anim, Motion.LoopFrameRate);
             _bars[i].BeginAnimation(ScaleTransform.ScaleYProperty, anim);
         }
     }

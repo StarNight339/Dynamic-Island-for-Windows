@@ -22,6 +22,22 @@ public partial class ClaudeView : IslandView
     {
         InitializeComponent();
         _tick.Tick += (_, _) => RenderElapsed();
+        // Sessions that ended, went stale or sit behind another activity aren't on the island; a running timer would
+        // keep them alive forever and an endless spin would keep WPF rendering frames for nothing.
+        Loaded += (_, _) => ApplyMotion();
+        Unloaded += (_, _) => ApplyMotion();
+    }
+
+    private void ApplyMotion()
+    {
+        var on = Current == Phase.Working && IsLoaded;
+        var spin = on
+            ? new DoubleAnimation(0, 360, TimeSpan.FromSeconds(2.4)) { RepeatBehavior = RepeatBehavior.Forever }
+            : null;
+        if (spin is not null) Timeline.SetDesiredFrameRate(spin, Motion.LoopFrameRate);
+        Spin.BeginAnimation(RotateTransform.AngleProperty, spin);
+        CompactSpin.BeginAnimation(RotateTransform.AngleProperty, spin);
+        if (on) _tick.Start(); else _tick.Stop();
     }
 
     /// <summary>Resets the elapsed clock; call when a new prompt is submitted.</summary>
@@ -46,14 +62,8 @@ public partial class ClaudeView : IslandView
         Spark.Foreground = CompactSpark.Foreground = brush;
         Elapsed.Foreground = CompactElapsed.Foreground = brush;
 
-        var spin = phase == Phase.Working
-            ? new DoubleAnimation(0, 360, TimeSpan.FromSeconds(2.4)) { RepeatBehavior = RepeatBehavior.Forever }
-            : null;
-        Spin.BeginAnimation(RotateTransform.AngleProperty, spin);
-        CompactSpin.BeginAnimation(RotateTransform.AngleProperty, spin);
-
         WorkingBar.Visibility = phase == Phase.Working ? Visibility.Visible : Visibility.Collapsed;
-        if (phase == Phase.Working) _tick.Start(); else _tick.Stop();
+        ApplyMotion();
         RenderElapsed();
     }
 
