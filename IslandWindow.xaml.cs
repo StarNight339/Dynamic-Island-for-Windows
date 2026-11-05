@@ -37,6 +37,12 @@ public partial class IslandWindow : Window
 
     private bool _fullscreen;
     private bool _hidden;
+    private bool _fullyHidden; // the hide slide has finished; the island is out of sight
+
+    /// <summary>0 = shown, 100 = tucked into the top edge. Under-damped, so showing bounces a little past its spot.</summary>
+    private readonly Spring _slide = new(0, stiffness: 300, dampingRatio: 0.62);
+    private bool _slideRunning;
+    private TimeSpan _slideLast;
     private bool _hotkeyRegistered;
     private IntPtr _hwnd;
 
@@ -211,7 +217,7 @@ public partial class IslandWindow : Window
             overlay.Height = height;
             overlay.CornerRadius = new CornerRadius(radius);
         }
-        if (_effect == ThemeEffects.Acrylic && !_hidden) ClipBackdrop(width, height, radius);
+        if (_effect == ThemeEffects.Acrylic && !_fullyHidden) ClipBackdrop(width, height, radius);
 
         // Host sits centred above the pill at its final size; clip it to the pill's current shape.
         var hostWidth = double.IsNaN(Host.Width) ? width : Host.Width;
@@ -253,7 +259,7 @@ public partial class IslandWindow : Window
     private void ApplyBackdrop()
     {
         if (_hwnd == IntPtr.Zero) return;
-        if (_effect == ThemeEffects.Acrylic && !_hidden)
+        if (_effect == ThemeEffects.Acrylic && !_fullyHidden)
         {
             NativeMethods.SetAcrylic(_hwnd, _acrylicTint.A, _acrylicTint.R, _acrylicTint.G, _acrylicTint.B);
         }
@@ -266,7 +272,8 @@ public partial class IslandWindow : Window
 
     /// <summary>
     /// Windows blurs the whole window rectangle, so cut the window to the capsule's current shape (device pixels).
-    /// The capsule is centred horizontally, <see cref="IslandTop"/> below the top, all scaled by the theme size.
+    /// The capsule is centred horizontally, <see cref="IslandTop"/> below the top, all scaled by the theme size,
+    /// then moved by the hide/show slide (squashed about its top centre and shifted up).
     /// </summary>
     private void ClipBackdrop(double width, double height, double radius)
     {
@@ -274,8 +281,11 @@ public partial class IslandWindow : Window
         var toDevice = target.TransformToDevice;
         var sx = toDevice.M11 * _scale;
         var sy = toDevice.M22 * _scale;
+        width *= IslandSquash.ScaleX;
+        height *= IslandSquash.ScaleY;
+        radius *= Math.Min(IslandSquash.ScaleX, IslandSquash.ScaleY);
         var left = (BaseWidth - width) / 2 * sx;
-        var top = IslandTop * sy;
+        var top = (IslandTop + IslandSlide.Y) * sy;
         NativeMethods.SetRoundWindowRegion(_hwnd,
             (int)Math.Floor(left), (int)Math.Floor(top),
             (int)Math.Ceiling(left + width * sx), (int)Math.Ceiling(top + height * sy),
@@ -325,27 +335,23 @@ public partial class IslandWindow : Window
         var changed = hide != _hidden;
         _hidden = hide;
 
-        // The blur is drawn by Windows, not WPF, so fading Root out wouldn't hide it.
-        if (_effect == ThemeEffects.Acrylic)
+        // Out of the way while it slides off; once above the window it's transparent, so clicks go through.
+        Island.IsHitTestVisible = !hide;
+        if (!hide && _fullyHidden)
         {
-            if (hide)
-            {
-                NativeMethods.ClearAcrylic(_hwnd);
-                NativeMethods.ClearWindowRegion(_hwnd);
-            }
-            else
-            {
-                ApplyBackdrop();
-                ClipBackdrop(Pill.Width, Pill.Height, Pill.CornerRadius.TopLeft);
-            }
+            _fullyHidden = false;
+            ApplyBackdrop(); // the blur comes back and follows the capsule down
         }
-        // Opacity 0 keeps the window alive but makes every pixel click-through.
+
+        _slide.Target = hide ? 100 : 0;
         if (animate)
-            Root.BeginAnimation(OpacityProperty, new DoubleAnimation(hide ? 0 : 1, TimeSpan.FromMilliseconds(200)));
+        {
+            StartSlide();
+        }
         else
         {
-            Root.BeginAnimation(OpacityProperty, null);
-            Root.Opacity = hide ? 0 : 1;
+            _slide.Jump(_slide.Target);
+            ApplySlide();
         }
 
         if (hide)
@@ -364,6 +370,55 @@ public partial class IslandWindow : Window
             NativeMethods.BringToTop(_hwnd); // break through over a fullscreen app right away
         }
         if (changed) HiddenChanged?.Invoke(hide);
+    }
+
+    private void StartSlide()
+    {
+        if (_slideRunning) return;
+        _slideRunning = true;
+        _slideLast = TimeSpan.Zero;
+        CompositionTarget.Rendering += OnSlideFrame;
+    }
+
+    private void OnSlideFrame(object? sender, EventArgs e)
+    {
+        var now = ((RenderingEventArgs)e).RenderingTime;
+        if (now == _slideLast) return;
+        var dt = _slideLast == TimeSpan.Zero ? 1.0 / 60 : Math.Min((now - _slideLast).TotalSeconds, 1.0 / 20);
+        _slideLast = now;
+
+        _slide.Step(dt);
+        ApplySlide();
+        if (_slide.IsSettled)
+        {
+            CompositionTarget.Rendering -= OnSlideFrame;
+            _slideRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Moves the island for the current slide value: up by its own height plus the gap above it, narrowing toward
+    /// the top centre so it looks swallowed by the screen edge. The bounce on show (value below 0) stretches it a touch.
+    /// </summary>
+    private void ApplySlide()
+    {
+        var p = _slide.Value / 100;
+        var height = double.IsNaN(Pill.Height) ? Pill.ActualHeight : Pill.Height;
+        IslandSlide.Y = -p * (IslandTop + height + 12);
+        IslandSquash.ScaleX = 1 - 0.25 * p;
+        IslandSquash.ScaleY = 1 - 0.1 * p;
+
+        if (_hidden && _slide.IsSettled && _slide.Value >= 100)
+        {
+            // Fully tucked away: drop the blur, which Windows draws and which the slide can't move off-screen by itself.
+            _fullyHidden = true;
+            NativeMethods.ClearAcrylic(_hwnd);
+            NativeMethods.ClearWindowRegion(_hwnd);
+        }
+        else if (_effect == ThemeEffects.Acrylic && !_fullyHidden && !double.IsNaN(Pill.Width))
+        {
+            ClipBackdrop(Pill.Width, Pill.Height, Pill.CornerRadius.TopLeft);
+        }
     }
 
     private void Island_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)

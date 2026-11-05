@@ -11,7 +11,14 @@ public sealed class Spring(double value, double stiffness = 320, double dampingR
     public double Value { get; private set; } = value;
     public double Target { get; set; } = value;
 
-    public bool IsSettled => Math.Abs(Value - Target) < 0.05 && Math.Abs(_velocity) < 0.05;
+    /// <summary>Puts the spring at rest at <paramref name="value"/> without animating.</summary>
+    public void Jump(double value)
+    {
+        Value = Target = value;
+        _velocity = 0;
+    }
+
+    public bool IsSettled =>Math.Abs(Value - Target) < 0.05 && Math.Abs(_velocity) < 0.05;
 
     public void Step(double dt)
     {

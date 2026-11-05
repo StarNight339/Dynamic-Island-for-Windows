@@ -13,7 +13,14 @@
               MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
               MouseRightButtonUp="Island_MouseRightButtonUp"
               AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver"
-              DragLeave="Island_DragLeave" Drop="Island_Drop">
+              DragLeave="Island_DragLeave" Drop="Island_Drop" RenderTransformOrigin="0.5,0">
+            <!-- Hide / show: the island springs up into the top edge (narrowing as it goes) and drops back out. -->
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="IslandSquash" />
+                    <TranslateTransform x:Name="IslandSlide" />
+                </TransformGroup>
+            </Grid.RenderTransform>
             <!-- The black capsule: its size and corner radius are driven by springs. -->
             <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top" />
             <!-- Theme overlays, sized with the capsule every frame: "mossy" grain and the glass sheen. -->
