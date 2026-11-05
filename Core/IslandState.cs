@@ -41,6 +41,9 @@ public sealed class Activity
     /// <summary>Open in expanded form while it is current (notifications).</summary>
     public bool AutoExpand { get; init; }
 
+    /// <summary>Shows even while the island is hidden (by the user or for a fullscreen app), e.g. Claude needing you.</summary>
+    public bool Important { get; init; }
+
     public DateTime PostedAt { get; internal set; }
     public DateTime? ExpiresAt { get; internal set; }
 }

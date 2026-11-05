@@ -62,6 +62,26 @@ class NotifyTests(unittest.TestCase):
         status, _ = post("/notify", {"title": "x", "image": "C:/does/not/exist.png", "duration": 1})
         self.assertEqual(status, 200)
 
+    def test_priority(self):
+        for body in ({"priority": "high"}, {"priority": "urgent"}, {"priority": 3}, {"important": True},
+                     {"priority": "low"}):
+            with self.subTest(body=body):
+                self.assertEqual(post("/notify", {"title": "x", "duration": 1, **body})[0], 200)
+
+
+class VisibilityTests(unittest.TestCase):
+    def tearDown(self):
+        post("/visibility", {"hidden": False})  # never leave the island hidden after a test run
+
+    def test_hide_show_toggle(self):
+        self.assertEqual(post("/visibility", {"hidden": True}), (200, {"ok": True}))
+        self.assertEqual(post("/visibility", {"hidden": False}), (200, {"ok": True}))
+        self.assertEqual(post("/visibility", {})[0], 200)  # toggles
+
+    def test_important_notify_while_hidden(self):
+        post("/visibility", {"hidden": True})
+        self.assertEqual(post("/notify", {"title": "Important", "duration": 1, "priority": "high"})[0], 200)
+
 
 class ProgressTests(unittest.TestCase):
     def tearDown(self):

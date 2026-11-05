@@ -16,6 +16,7 @@ public partial class QuickPanelView : IslandView
     public event Action? SettingsRequested;
     public event Action? ShelfRequested;
     public event Action? ExitRequested;
+    public event Action? HideRequested;
 
     public override Size CompactSize => new(124, 32);
     public override Size ExpandedSize => new(420, 60 + (_toggleRows > 0 ? 8 + _toggleRows * (TileHeight + 6) : 0));
@@ -78,5 +79,6 @@ public partial class QuickPanelView : IslandView
     private void CancelTimer_Click(object sender, RoutedEventArgs e) => CancelTimerRequested?.Invoke();
     private void Shelf_Click(object sender, RoutedEventArgs e) => ShelfRequested?.Invoke();
     private void Settings_Click(object sender, RoutedEventArgs e) => SettingsRequested?.Invoke();
+    private void Hide_Click(object sender, RoutedEventArgs e) => HideRequested?.Invoke();
     private void Exit_Click(object sender, RoutedEventArgs e) => ExitRequested?.Invoke();
 }
