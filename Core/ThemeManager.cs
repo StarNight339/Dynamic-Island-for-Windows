@@ -233,6 +233,7 @@ public sealed class ThemeManager
 
     private void Animate(Animatable target, DependencyProperty property, AnimationTimeline animation)
     {
+        Timeline.SetDesiredFrameRate(animation, Views.Motion.LoopFrameRate); // slow colour drift; 30 fps is plenty
         var clock = animation.CreateClock();
         target.ApplyAnimationClock(property, clock);
         _clocks.Add(clock);

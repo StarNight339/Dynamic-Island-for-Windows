@@ -55,10 +55,12 @@ public sealed class IndeterminateBar : Grid
         }
         var width = ActualWidth * SegmentFraction;
         _segment.Width = width;
-        _offset.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-width, ActualWidth, TimeSpan.FromSeconds(1.2))
+        var sweep = new DoubleAnimation(-width, ActualWidth, TimeSpan.FromSeconds(1.2))
         {
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-        });
+        };
+        Timeline.SetDesiredFrameRate(sweep, Motion.LoopFrameRate);
+        _offset.BeginAnimation(TranslateTransform.XProperty, sweep);
     }
 }
