@@ -13,6 +13,8 @@ public partial class TimerView : IslandView
 
     public TimerView() => InitializeComponent();
 
+    public override BubbleInfo Bubble => new("", (System.Windows.Media.Brush)FindResource("AccentOrange"));
+
     /// <param name="total">The full length (including added minutes); the bar shows how much of it is left.</param>
     public void SetRemaining(TimeSpan remaining, TimeSpan total)
     {

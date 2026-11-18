@@ -202,6 +202,35 @@ internal static partial class NativeMethods
         if (SetWindowRgn(hwnd, region, true) == 0) DeleteObject(region); // only freed by us when Windows didn't take it
     }
 
+    /// <summary>
+    /// Clips the window to the union of rounded rectangles (device pixels): the capsule plus the split-off bubble.
+    /// Each item is (left, top, right, bottom, corner diameter).
+    /// </summary>
+    public static void SetRoundWindowRegion(IntPtr hwnd, ReadOnlySpan<(int Left, int Top, int Right, int Bottom, int Diameter)> rects)
+    {
+        if (rects.Length == 0) return;
+        var region = IntPtr.Zero;
+        foreach (var r in rects)
+        {
+            var part = CreateRoundRectRgn(r.Left, r.Top, r.Right + 1, r.Bottom + 1, r.Diameter, r.Diameter);
+            if (part == IntPtr.Zero) continue;
+            if (region == IntPtr.Zero)
+            {
+                region = part;
+                continue;
+            }
+            CombineRgn(region, region, part, RGN_OR);
+            DeleteObject(part);
+        }
+        if (region == IntPtr.Zero) return;
+        if (SetWindowRgn(hwnd, region, true) == 0) DeleteObject(region);
+    }
+
+    private const int RGN_OR = 2;
+
+    [LibraryImport("gdi32.dll")]
+    private static partial int CombineRgn(IntPtr destination, IntPtr source1, IntPtr source2, int mode);
+
     public static void ClearWindowRegion(IntPtr hwnd) => SetWindowRgn(hwnd, IntPtr.Zero, true);
 
     /// <summary>Tool window (no taskbar / alt-tab entry) that never takes keyboard focus.</summary>

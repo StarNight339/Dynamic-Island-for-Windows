@@ -65,7 +65,10 @@ public partial class ClaudeView : IslandView
         WorkingBar.Visibility = phase == Phase.Working ? Visibility.Visible : Visibility.Collapsed;
         ApplyMotion();
         RenderElapsed();
+        OnBubbleChanged();
     }
+
+    public override BubbleInfo Bubble => new("✳", CompactSpark.Foreground);
 
     private void RenderElapsed() =>
         Elapsed.Text = CompactElapsed.Text = FormatTime(DateTime.UtcNow - _startedAt);

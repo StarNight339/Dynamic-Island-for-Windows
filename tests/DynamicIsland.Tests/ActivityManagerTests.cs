@@ -94,4 +94,52 @@ public class ActivityManagerTests
     [InlineData(90, "1 h 30")]
     [InlineData(120, "2 h")]
     public void FormatMinutes(int minutes, string expected) => Assert.Equal(expected, IslandView.FormatMinutes(minutes));
+
+    [Fact]
+    public void Secondary_is_the_runner_up() => Sta.Run(() =>
+    {
+        var m = new ActivityManager();
+        var media = Make("media", Priority.Media);
+        var timer = Make("timer", Priority.Timer);
+        m.Post(media);
+        Assert.Null(m.Secondary);
+        m.Post(timer);
+        Assert.Same(timer, m.Current);
+        Assert.Same(media, m.Secondary);
+        m.Remove("timer");
+        Assert.Same(media, m.Current);
+        Assert.Null(m.Secondary);
+    });
+
+    [Fact]
+    public void Secondary_skips_expiring_activities_and_the_current_view() => Sta.Run(() =>
+    {
+        var m = new ActivityManager();
+        var media = Make("media", Priority.Media);
+        m.Post(Make("volume", Priority.Volume), TimeSpan.FromSeconds(2));
+        m.Post(Make("notify", Priority.Notification), TimeSpan.FromSeconds(5));
+        Assert.Null(m.Secondary); // the volume pop-up is transient
+
+        var shelfView = new TestView();
+        m.Post(new Activity { Id = "shelf-open", View = shelfView, Priority = Priority.ShelfOpen });
+        m.Post(new Activity { Id = "shelf", View = shelfView, Priority = Priority.Shelf });
+        m.Post(media);
+        Assert.Same(media, m.Secondary); // not the shelf pill: it's the same view as the open shelf
+    });
+
+    [Fact]
+    public void SecondaryChanged_fires_only_on_change() => Sta.Run(() =>
+    {
+        var m = new ActivityManager();
+        var count = 0;
+        m.SecondaryChanged += () => count++;
+        m.Post(Make("timer", Priority.Timer));
+        Assert.Equal(0, count);
+        m.Post(Make("media", Priority.Media));
+        Assert.Equal(1, count);
+        m.Post(Make("claude", Priority.ClaudeWorking)); // claude takes over; timer becomes the runner-up
+        Assert.Equal(2, count);
+        m.Remove("missing");
+        Assert.Equal(2, count);
+    });
 }

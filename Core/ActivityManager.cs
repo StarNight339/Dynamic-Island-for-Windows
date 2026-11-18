@@ -14,8 +14,17 @@ public sealed class ActivityManager
 
     public Activity? Current { get; private set; }
 
+    /// <summary>
+    /// The runner-up that keeps running in the background (e.g. a timer behind music), shown as the split-off bubble.
+    /// Only long-running activities (no expiry) qualify, and never one sharing <see cref="Current"/>'s view.
+    /// </summary>
+    public Activity? Secondary { get; private set; }
+
     /// <summary>Raised when <see cref="Current"/> changes (including to null).</summary>
     public event Action? CurrentChanged;
+
+    /// <summary>Raised when <see cref="Secondary"/> changes (including to null).</summary>
+    public event Action? SecondaryChanged;
 
     public ActivityManager()
     {
@@ -54,16 +63,21 @@ public sealed class ActivityManager
     /// <summary>Re-evaluates which activity wins. Call after changing an activity's priority.</summary>
     public void Recompute()
     {
-        var best = _items.Values
+        var ranked = _items.Values
             .OrderByDescending(a => a.Priority)
             .ThenByDescending(a => a.PostedAt)
-            .FirstOrDefault();
+            .ToList();
+        var best = ranked.FirstOrDefault();
+        var second = best is null ? null
+            : ranked.Skip(1).FirstOrDefault(a => a.ExpiresAt is null && !ReferenceEquals(a.View, best.View));
 
-        if (!ReferenceEquals(best, Current))
-        {
-            Current = best;
-            CurrentChanged?.Invoke();
-        }
+        var currentChanged = !ReferenceEquals(best, Current);
+        var secondaryChanged = !ReferenceEquals(second, Secondary);
+        Current = best;
+        Secondary = second;
+        // Both are updated before either event, so handlers always see a consistent pair.
+        if (currentChanged) CurrentChanged?.Invoke();
+        if (secondaryChanged) SecondaryChanged?.Invoke();
     }
 
     private void PurgeExpired()

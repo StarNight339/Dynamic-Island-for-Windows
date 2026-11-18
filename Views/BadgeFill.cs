@@ -52,5 +52,5 @@ internal static class BadgeFill
     }
 
     /// <summary>Fluent/MDL2 icons live in the Unicode private-use area.</summary>
-    private static bool IsFluentGlyph(string s) => s.Length == 1 && s[0] is >= '' and <= '';
+    internal static bool IsFluentGlyph(string s) => s.Length == 1 && s[0] is >= '' and <= '';
 }

@@ -21,6 +21,26 @@ public sealed class SettingsStoreTests : IDisposable
         var store = new SettingsStore(FilePath);
         Assert.Equal(5179, store.Get<ApiSettings>().Port);
         Assert.Equal(new[] { 1, 5, 10, 25 }, store.Get<TimerSettings>().Presets);
+        var motion = store.Get<MotionSettings>();
+        Assert.True(motion.Morphing && motion.SquashStretch && motion.SplitMerge && motion.ParallaxTilt);
+        Assert.Equal(50, motion.Bounciness);
+        Assert.Equal(100, motion.Speed);
+    });
+
+    [Fact]
+    public void Motion_settings_round_trip() => Sta.Run(() =>
+    {
+        var store = new SettingsStore(FilePath);
+        var motion = store.Get<MotionSettings>();
+        motion.SplitMerge = false;
+        motion.Bounciness = 80;
+        store.Save<MotionSettings>();
+        store.Flush();
+
+        var reloaded = new SettingsStore(FilePath).Get<MotionSettings>();
+        Assert.False(reloaded.SplitMerge);
+        Assert.Equal(80, reloaded.Bounciness);
+        Assert.True(reloaded.Morphing);
     });
 
     [Fact]
