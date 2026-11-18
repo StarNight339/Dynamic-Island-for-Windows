@@ -77,6 +77,30 @@ public sealed class UpdateSettings : ISettingsModel
 }
 
 /// <summary>How the island looks. Applied live by <see cref="ThemeManager"/>; presets live in <see cref="ThemePresets"/>.</summary>
+/// <summary>Island motion effects. All on by default; turning one off restores the plain behaviour.</summary>
+public sealed class MotionSettings : ISettingsModel
+{
+    public static string SectionId => "motion";
+
+    /// <summary>Cross-morph (blur + fade) from the old content into the new one when the activity changes.</summary>
+    public bool Morphing { get; set; } = true;
+
+    /// <summary>The capsule stretches along the direction it is growing, then settles.</summary>
+    public bool SquashStretch { get; set; } = true;
+
+    /// <summary>A second running activity splits off into a bubble beside the island.</summary>
+    public bool SplitMerge { get; set; } = true;
+
+    /// <summary>The open island tilts toward the pointer, content moving more than the capsule.</summary>
+    public bool ParallaxTilt { get; set; } = true;
+
+    /// <summary>0 = no overshoot, 50 = the original feel, 100 = very springy.</summary>
+    public int Bounciness { get; set; } = 50;
+
+    /// <summary>Spring speed in percent (50–150).</summary>
+    public int Speed { get; set; } = 100;
+}
+
 public sealed class ThemeSettings : ISettingsModel
 {
     public static string SectionId => "theme";

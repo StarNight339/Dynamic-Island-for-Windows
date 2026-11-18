@@ -35,6 +35,7 @@ public partial class FileShelfView : IslandView
 
     public override Size CompactSize => new(300, 36);
     public override Size ExpandedSize => new(520, 196);
+    public override BubbleInfo Bubble => new("", (Brush)FindResource("AccentOrange"));
     protected override FrameworkElement CompactPart => CompactRoot;
     protected override FrameworkElement ExpandedPart => ExpandedRoot;
 

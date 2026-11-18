@@ -28,7 +28,12 @@ public partial class ProgressView : IslandView
         Busy.Foreground = CompactBusy.Foreground = accent;
         BadgeFill.Apply(Badge, IconText, EmojiIcon, icon, accent, image, 12);
         BadgeFill.Apply(CompactBadge, CompactIcon, CompactEmoji, icon, accent, image, 6);
+        _bubble = new BubbleInfo(icon, accent, image?.Still);
+        OnBubbleChanged();
     }
+
+    private BubbleInfo? _bubble;
+    public override BubbleInfo? Bubble => _bubble;
 
     /// <param name="fraction">0..1</param>
     public void SetProgress(double fraction)
