@@ -1,7 +1,12 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace DynamicIsland.Views;
+
+/// <summary>The split-off bubble's content: an image (album art, app icon) or an icon in an accent colour.</summary>
+/// <param name="Icon">A Segoe Fluent Icons glyph, or any short text / symbol.</param>
+public sealed record BubbleInfo(string Icon, Brush Accent, ImageSource? Image = null);
 
 /// <summary>
 /// Base for everything shown inside the island. Each view has a compact layout (the pill) and an
@@ -29,6 +34,14 @@ public abstract class IslandView : UserControl
     }
 
     public Size CurrentSize => IsExpanded ? ExpandedSize : CompactSize;
+
+    /// <summary>What the split-off bubble shows while this view is the runner-up activity; null = no bubble.</summary>
+    public virtual BubbleInfo? Bubble => null;
+
+    /// <summary>Raised when <see cref="Bubble"/> changes (new album art, a new Claude phase…).</summary>
+    public event Action? BubbleChanged;
+
+    protected void OnBubbleChanged() => BubbleChanged?.Invoke();
 
     protected static string FormatTime(TimeSpan t) =>
         t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"m\:ss");

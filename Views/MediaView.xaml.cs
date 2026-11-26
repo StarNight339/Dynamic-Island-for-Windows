@@ -49,7 +49,10 @@ public partial class MediaView : IslandView
         CompactArt.ImageSource = art;
         ExpandedArt.ImageSource = art;
         SetPlaying(playing);
+        OnBubbleChanged();
     }
+
+    public override BubbleInfo Bubble => new("", (Brush)FindResource("AccentGreen"), CompactArt.ImageSource);
 
     public void SetPlaying(bool playing)
     {

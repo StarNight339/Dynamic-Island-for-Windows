@@ -59,6 +59,7 @@ public partial class App : Application
         _registry = new SettingsRegistry([
             new GeneralSection(settings),
             new ThemeSection(settings),
+            new MotionSection(settings),
             new TimerSection(settings),
             new BatterySection(settings),
             new MediaSection(settings),

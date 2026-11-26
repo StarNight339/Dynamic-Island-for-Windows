@@ -23,5 +23,8 @@ public partial class StatusView : IslandView
         LevelBar.Foreground = accent;
         ValueText.Text = value;
         ValueText.Foreground = accent;
+        OnBubbleChanged();
     }
+
+    public override BubbleInfo Bubble => new(IconText.Text, IconText.Foreground);
 }

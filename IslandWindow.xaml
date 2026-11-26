@@ -10,32 +10,80 @@
     <!-- Fully transparent pixels of a layered window are click-through, so only the black island catches the mouse. -->
     <Grid x:Name="Root">
         <Grid x:Name="Island" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
-              MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
+              MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave" MouseMove="Island_MouseMove"
               MouseRightButtonUp="Island_MouseRightButtonUp"
               AllowDrop="True" DragEnter="Island_DragEnter" DragOver="Island_DragOver"
               DragLeave="Island_DragLeave" Drop="Island_Drop">
-            <!-- The black capsule: its size and corner radius are driven by springs. -->
-            <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top" />
-            <!-- Theme overlays, sized with the capsule every frame: "mossy" grain and the glass sheen. -->
-            <Border x:Name="PillTexture" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
-                    Visibility="Collapsed" />
-            <Border x:Name="PillSheen" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
-                    Visibility="Collapsed" BorderThickness="1" BorderBrush="#38FFFFFF">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#2EFFFFFF" Offset="0" />
-                        <GradientStop Color="#00FFFFFF" Offset="0.55" />
-                    </LinearGradientBrush>
-                </Border.Background>
+            <!-- Split & merge: the gooey neck between the capsule and the bubble while they pull apart / meet.
+                 Positioned in Island coordinates with the centre line at x = 0 (see UpdateBubble). -->
+            <Canvas HorizontalAlignment="Center" VerticalAlignment="Top" Width="0" Height="0">
+                <Path x:Name="Bridge" Fill="Black" Visibility="Collapsed" IsHitTestVisible="False" />
+            </Canvas>
+            <!-- The runner-up activity, split off beside the capsule. -->
+            <Border x:Name="Bubble" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top"
+                    Width="36" Height="36" CornerRadius="18" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="BubbleScale" />
+                        <TranslateTransform x:Name="BubbleShift" />
+                    </TransformGroup>
+                </Border.RenderTransform>
+                <Grid>
+                    <Ellipse x:Name="BubbleArt" Margin="5" Visibility="Collapsed" />
+                    <TextBlock x:Name="BubbleIcon" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
             </Border>
 
-            <!-- Content is laid out at its final size and revealed by clipping to the capsule. -->
-            <ContentControl x:Name="Host" HorizontalAlignment="Center" VerticalAlignment="Top" Focusable="False"
-                            RenderTransformOrigin="0.5,0.3">
-                <ContentControl.RenderTransform>
-                    <ScaleTransform x:Name="HostScale" />
-                </ContentControl.RenderTransform>
-            </ContentControl>
+            <!-- The capsule and its content. Squash & stretch scales it; split & merge shifts it left. -->
+            <Grid x:Name="Main" RenderTransformOrigin="0.5,0">
+                <Grid.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="MainScale" />
+                        <TranslateTransform x:Name="MainShift" />
+                    </TransformGroup>
+                </Grid.RenderTransform>
+
+                <!-- The black capsule: its size and corner radius are driven by springs. -->
+                <Border x:Name="Pill" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="PillParallax" />
+                    </Border.RenderTransform>
+                </Border>
+                <!-- Theme overlays, sized with the capsule every frame: "mossy" grain and the glass sheen. -->
+                <Border x:Name="PillTexture" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
+                        Visibility="Collapsed" />
+                <Border x:Name="PillSheen" HorizontalAlignment="Center" VerticalAlignment="Top" IsHitTestVisible="False"
+                        Visibility="Collapsed" BorderThickness="1" BorderBrush="#38FFFFFF">
+                    <Border.Background>
+                        <LinearGradientBrush x:Name="SheenBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+                            <GradientStop Color="#2EFFFFFF" Offset="0" />
+                            <GradientStop Color="#00FFFFFF" Offset="0.55" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <!-- Morphing: a snapshot of the outgoing content that blurs and fades out over the new one. -->
+                <Image x:Name="Ghost" HorizontalAlignment="Center" VerticalAlignment="Top" Stretch="Fill"
+                       IsHitTestVisible="False" Visibility="Collapsed" RenderTransformOrigin="0.5,0.3">
+                    <Image.RenderTransform>
+                        <ScaleTransform x:Name="GhostScale" />
+                    </Image.RenderTransform>
+                </Image>
+
+                <!-- Content is laid out at its final size and revealed by clipping (Host) to the capsule.
+                     HostInner carries the pop-in scale and the parallax tilt, inside the clip. -->
+                <Border x:Name="Host" HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <ContentControl x:Name="HostInner" Focusable="False" RenderTransformOrigin="0.5,0.3">
+                        <ContentControl.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="HostScale" />
+                                <SkewTransform x:Name="HostSkew" />
+                                <TranslateTransform x:Name="HostParallax" />
+                            </TransformGroup>
+                        </ContentControl.RenderTransform>
+                    </ContentControl>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
